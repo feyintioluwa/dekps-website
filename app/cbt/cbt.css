@@ -20,3 +20,19 @@
 .cbt-dot.done{background:#138a57;color:#fff;border-color:#138a57}
 .cbt-dot.cur{outline:3px solid #d4ad58}
 .cbt-big{font-size:2.4rem;font-weight:800;color:#071f3d}
+.cbt input,
+.cbt textarea,
+.cbt select,
+.cbt button {
+  font-family: inherit;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.cbt input::placeholder {
+  font-family: inherit;
+  color: #8a94a6;
+}
+.cbt input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: #071f3d;
+}

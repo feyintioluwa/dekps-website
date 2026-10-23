@@ -203,8 +203,8 @@ export default function CbtPage() {
           <form className="cbt-card" onSubmit={login}>
             <h2>Student Login</h2>
             <p style={{ color: "#687385", marginBottom: 14 }}>Use your Student Login ID and 4-digit PIN.</p>
-            <input placeholder="Login ID" value={loginId} onChange={(e) => setLoginId(e.target.value)} autoComplete="username" />
-            <input placeholder="4-digit PIN" type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} autoComplete="current-password" />
+            <input placeholder="Login ID" value={loginId} onChange={(e) => setLoginId(e.target.value)} autoComplete="off" />
+            <input placeholder="4-digit PIN" type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} autoComplete="new-password" />
             {msg && <div className="cbt-err">{msg}</div>}
             <button className="cbt-btn" disabled={busy}>{busy ? "Checking..." : "Login"}</button>
           </form>
