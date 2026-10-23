@@ -1,0 +1,35 @@
+/* Shared admin page styling (used inside the admin shell) */
+.adm{background:#fff;border:1px solid #dfe4ea;border-radius:14px;padding:26px;box-shadow:0 10px 30px rgba(7,31,61,.06);font-family:Poppins,Arial,sans-serif;color:#18212f}
+.adm h1{font-size:1.25rem;color:#071f3d;margin:0 0 6px}
+.adm h2{font-size:1.02rem;color:#071f3d;margin:26px 0 12px;padding-left:12px;border-left:4px solid #d4ad58}
+.adm h3{font-size:.95rem;color:#071f3d;margin:18px 0 8px}
+.adm p{color:#687385;font-size:.9rem}
+.adm input,.adm select,.adm textarea{width:100%;padding:11px 13px;border:1px solid #cfd6df;border-radius:8px;margin-bottom:12px;font:inherit;font-size:.92rem;background:#fff;color:#18212f}
+.adm input:focus,.adm select:focus,.adm textarea:focus{outline:none;border-color:#1e5c98;box-shadow:0 0 0 3px rgba(30,92,152,.12)}
+.adm input[type=checkbox]{width:auto;margin:0 8px 0 0}
+.adm button{background:#071f3d;color:#fff;border:0;padding:11px 20px;border-radius:8px;font:inherit;font-size:.9rem;font-weight:700;cursor:pointer;margin-bottom:8px;transition:background .15s}
+.adm button:hover:not(:disabled){background:#0c315d}
+.adm button:disabled{opacity:.45;cursor:not-allowed}
+.adm-row{display:flex;gap:10px;flex-wrap:wrap}
+.adm-row>input,.adm-row>select{flex:1;min-width:150px;margin-bottom:12px}
+.adm-msg{background:#fdf0f1;border:1px solid #f2c7cb;color:#9e1824;padding:11px 14px;border-radius:8px;font-weight:600;font-size:.9rem;margin:12px 0}
+.adm label{display:block;padding:7px 10px;border-radius:6px;font-size:.92rem}
+.adm label:hover{background:#f4f6f9}
+.adm table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.9rem}
+.adm th{background:#071f3d;color:#fff;text-align:left;padding:10px;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+.adm td{padding:10px;border-bottom:1px solid #e8ebef}
+.adm tbody tr:nth-child(even){background:#fafbfc}
+.adm-sheet{margin-top:24px;border-top:2px dashed #cfd6df;padding-top:8px}
+/* dashboard */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:8px}
+.stat{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:18px;border-top:4px solid #d4ad58;box-shadow:0 8px 24px rgba(7,31,61,.05)}
+.stat strong{display:block;font-size:1.9rem;color:#071f3d;line-height:1.1}
+.stat span{color:#687385;font-size:.82rem}
+.sec-title{color:#071f3d;font-size:1.05rem;margin:26px 0 12px;font-family:Poppins,Arial,sans-serif}
+.tile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.tile{display:block;background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:20px;text-decoration:none;color:#18212f;transition:.15s;box-shadow:0 8px 24px rgba(7,31,61,.05);font-family:Poppins,Arial,sans-serif}
+.tile:hover{transform:translateY(-2px);border-color:#d4ad58}
+.tile-ic{width:44px;height:44px;border-radius:10px;background:#edf3fa;display:grid;place-items:center;font-size:1.3rem;margin-bottom:10px}
+.tile b{color:#071f3d}
+.tile p{color:#687385;font-size:.85rem;margin-top:4px}
+@media print{.adm-noprint{display:none!important}.adm{border:0;box-shadow:none;padding:0}}

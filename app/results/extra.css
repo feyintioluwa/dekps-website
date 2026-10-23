@@ -1,0 +1,4 @@
+.term-picker{display:flex;align-items:center;gap:10px;margin:0 0 14px;flex-wrap:wrap}
+.term-picker label{font-weight:700;color:#071f3d}
+.term-picker select{height:42px;padding:0 12px;border:1px solid #dfe4ea;border-radius:8px;background:#fff;font:inherit;min-width:240px}
+@media print{.term-picker{display:none!important}}

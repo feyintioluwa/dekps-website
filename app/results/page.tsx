@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import "./results.css";
+import "./extra.css";
 
 type Subject = {
   subject: string;
@@ -24,6 +25,8 @@ type Student = {
   teacher_remark: string | null;
   subjects: Subject[];
 };
+
+type TermOption = { id: number; term: string; session: string };
 
 function getGrade(score: number | null): string {
   if (score === null || !Number.isFinite(score)) return "-";
@@ -61,15 +64,42 @@ export default function ResultsPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [student, setStudent] = useState<Student | null>(null);
+  const [terms, setTerms] = useState<TermOption[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const resultRef = useRef<HTMLElement>(null);
+  const firstShow = useRef(true);
 
   useEffect(() => {
-    if (!student) return;
+    if (!student) {
+      firstShow.current = true;
+      return;
+    }
+    if (!firstShow.current) return;
+    firstShow.current = false;
     const timer = setTimeout(() => {
       resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 100);
     return () => clearTimeout(timer);
   }, [student]);
+
+  async function request(id: string, code: string, resultId?: number) {
+    const response = await fetch("/api/result", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ loginId: id, pin: code, resultId }),
+    });
+    return response.json();
+  }
+
+  function applyOk(data: { student: Student; terms?: TermOption[] }) {
+    const list = data.terms ?? [];
+    setTerms(list);
+    const match = list.find(
+      (t) => t.term === data.student.term && t.session === data.student.session
+    );
+    setSelectedId(match ? String(match.id) : "");
+    setStudent(data.student);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,14 +123,10 @@ export default function ResultsPage() {
 
     setLoading(true);
     setStudent(null);
+    setTerms([]);
 
     try {
-      const response = await fetch("/api/result", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginId: id, pin: code }),
-      });
-      const data = await response.json();
+      const data = await request(id, code);
 
       if (data.status === "ok") {
         if (data.student.total === null) {
@@ -108,7 +134,7 @@ export default function ResultsPage() {
             "Your result is not available yet. Please contact the school."
           );
         } else {
-          setStudent(data.student);
+          applyOk(data);
         }
       } else if (data.status === "locked") {
         setMessage(
@@ -130,8 +156,23 @@ export default function ResultsPage() {
     }
   }
 
+  async function changeTerm(e: ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+    setSelectedId(value);
+    setMessage("");
+    try {
+      const data = await request(loginId.trim(), pin.trim(), Number(value));
+      if (data.status === "ok") applyOk(data);
+      else setMessage("Could not load that term. Please try again.");
+    } catch {
+      setMessage("Could not reach the server. Please try again.");
+    }
+  }
+
   function checkAnother() {
     setStudent(null);
+    setTerms([]);
+    setSelectedId("");
     setMessage("");
     setLoginId("");
     setPin("");
@@ -144,6 +185,7 @@ export default function ResultsPage() {
       <header className="top-header">
         <div className="header-inner">
           <div className="school-brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/kps-logo.png"
               alt="De Kings Perfection Private School Logo"
@@ -168,7 +210,7 @@ export default function ResultsPage() {
             <h2>Check Your Academic Result</h2>
             <p>
               Enter your Student Login ID and PIN to securely access your
-              third term result.
+              result.
             </p>
           </div>
         </section>
@@ -264,8 +306,27 @@ export default function ResultsPage() {
         >
           {student && (
             <>
+              {terms.length > 1 && (
+                <div className="term-picker">
+                  <label htmlFor="termSelect">Select term</label>
+                  <select
+                    id="termSelect"
+                    value={selectedId}
+                    onChange={changeTerm}
+                  >
+                    {!selectedId && <option value="">Current result</option>}
+                    {terms.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.term} — {t.session}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="result-sheet">
                 <div className="result-header">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/assets/kps-logo.png"
                     alt="School Logo"
@@ -275,6 +336,7 @@ export default function ResultsPage() {
                   <h2>Academic and Moral Excellence</h2>
                   <p>13, Abosule Street, Agbado Crossing, Ogun State</p>
                   <div className="result-heading">STUDENT ACADEMIC RESULT</div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/assets/stamp.webp"
                     alt="Verified Result"
@@ -302,7 +364,7 @@ export default function ResultsPage() {
                     <span>Average</span>
                     <strong>
                       {student.average !== null
-                        ? student.average.toFixed(2)
+                        ? Number(student.average).toFixed(2)
                         : "0.00"}
                       %
                     </strong>
