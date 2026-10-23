@@ -34,8 +34,11 @@ export async function POST(request: Request) {
   const fail = (m: string, s = 500) => NextResponse.json({ error: m }, { status: s });
 
   if (b.action === "create") {
-    const row = {
-      term_id: b.termId, class_id: b.classId, subject_id: b.subjectId,
+    // One test is created for EVERY class ticked (same settings, separate copies)
+    const classIds = ((b.classIds ?? (b.classId ? [b.classId] : [])) as string[]).filter(Boolean);
+    if (!classIds.length) return fail("Choose at least one class", 400);
+    const rows = classIds.map((classId) => ({
+      term_id: b.termId, class_id: classId, subject_id: b.subjectId,
       kind: b.kind === "exam" ? "exam" : "test1",
       mode: "cbt",
       max_score: b.kind === "exam" ? 60 : 40,
@@ -44,24 +47,28 @@ export async function POST(request: Request) {
       opens_at: b.startAt || null, closes_at: b.endAt || null,
       instructions: b.instructions || null,
       is_published: false,
-    };
-    const { data, error } = await sb.from("assessments").insert(row).select("id").single();
+    }));
+    const { data, error } = await sb.from("assessments").insert(rows).select("id, class_id");
     if (error) return fail(error.message);
-    return NextResponse.json({ ok: true, id: data.id });
+    return NextResponse.json({ ok: true, id: data[0].id, ids: data.map((d) => d.id) });
   }
 
   if (b.action === "questions") {
     const qs = (b.questions ?? []) as { question: string; a: string; b: string; c: string; d: string; correct: string }[];
-    if (!b.assessmentId || !qs.length) return fail("Nothing to add", 400);
-    const { data: last } = await sb.from("questions").select("position").eq("assessment_id", b.assessmentId).order("position", { ascending: false }).limit(1);
-    let pos = last?.[0]?.position ?? 0;
-    const rows = qs.map((q) => ({
-      assessment_id: b.assessmentId, position: ++pos, question: q.question,
-      option_a: q.a, option_b: q.b, option_c: q.c, option_d: q.d, correct: q.correct,
-    }));
-    const { error } = await sb.from("questions").insert(rows);
-    if (error) return fail(error.message);
-    return NextResponse.json({ ok: true, added: rows.length });
+    // The same questions can be added to several tests at once (assessmentIds)
+    const targets = ((b.assessmentIds ?? (b.assessmentId ? [b.assessmentId] : [])) as string[]).filter(Boolean);
+    if (!targets.length || !qs.length) return fail("Nothing to add", 400);
+    for (const assessmentId of targets) {
+      const { data: last } = await sb.from("questions").select("position").eq("assessment_id", assessmentId).order("position", { ascending: false }).limit(1);
+      let pos = last?.[0]?.position ?? 0;
+      const rows = qs.map((q) => ({
+        assessment_id: assessmentId, position: ++pos, question: q.question,
+        option_a: q.a, option_b: q.b, option_c: q.c, option_d: q.d, correct: q.correct,
+      }));
+      const { error } = await sb.from("questions").insert(rows);
+      if (error) return fail(error.message);
+    }
+    return NextResponse.json({ ok: true, added: qs.length, tests: targets.length });
   }
 
   if (b.action === "pull") {
