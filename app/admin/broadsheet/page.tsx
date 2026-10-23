@@ -15,6 +15,9 @@ type Data = {
 type Row = { loginId: string; scores: { subjectId: string; kind: string; score: number }[] };
 type Group = { classId: string; className: string; rows: Row[] };
 
+// Compare names/subjects ignoring capitals and extra spaces
+const norm = (v: unknown) => String(v ?? "").toUpperCase().replace(/\s+/g, " ").trim();
+
 export default function Broadsheet() {
   const key = useAdminKey();
   const [classes, setClasses] = useState<Opt[]>([]);
@@ -50,6 +53,7 @@ export default function Broadsheet() {
     return mine.length === 0 || mine.some((x) => x.subject_id === subId);
   };
 
+  // ---------- Template: same layout as the school's broadsheet ----------
   async function template() {
     if (!termId) return setMsg("Choose the term first.");
     setBusy(true); setMsg("Preparing template…");
@@ -58,26 +62,57 @@ export default function Broadsheet() {
     for (const c of targets()) {
       const d = await fetchClass(c.id);
       if (!d) { setBusy(false); return; }
-      if (!d.students.length) continue;
-      const header = ["Login ID", "Name", ...d.subjects.flatMap((s) => [`${s.name} CA`, `${s.name} Exam`])];
-      const rows = d.students.map((st) => [
-        st.login_id, st.name,
-        ...d.subjects.flatMap((s) => {
-          if (!allowed(d, st, s.id)) return ["", ""];
+      if (!d.students.length || !d.subjects.length) continue;
+
+      // Row 1: Subject + each subject name (merged over 3 columns)
+      // Row 2: Name/Score + 40, 60, 100 under every subject
+      const top: (string | number)[] = ["Subject"];
+      const max: (string | number)[] = ["Name/Score"];
+      d.subjects.forEach((s) => { top.push(s.name, "", ""); max.push(40, 60, 100); });
+      const aoa: (string | number)[][] = [top, max];
+
+      d.students.forEach((st) => {
+        const line: (string | number)[] = [st.name];
+        d.subjects.forEach((s) => {
+          if (!allowed(d, st, s.id)) { line.push("", "", ""); return; }
           const g = (k: string) => d.scores.find((x) => x.student_id === st.id && x.subject_id === s.id && x.kind === k)?.score ?? "";
-          return [g("ca"), g("exam")];
-        }),
-      ]);
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...rows]), c.name.slice(0, 31));
+          line.push(g("ca"), g("exam"), "");
+        });
+        aoa.push(line);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: d.subjects.length * 3 } });
+      ws["!merges"] = d.subjects.map((_, j) => ({ s: { r: 0, c: 1 + j * 3 }, e: { r: 0, c: 3 + j * 3 } }));
+      ws["!cols"] = [{ wch: 30 }, ...d.subjects.flatMap(() => [{ wch: 7 }, { wch: 7 }, { wch: 7 }])];
+
+      // Total column = CA + Exam (a formula, like the school's sheet)
+      d.students.forEach((st, i) => {
+        const excelRow = i + 3;
+        d.subjects.forEach((s, j) => {
+          if (!allowed(d, st, s.id)) return;
+          const ca = 1 + j * 3, ex = ca + 1, tot = ca + 2;
+          const caRef = XLSX.utils.encode_cell({ r: excelRow - 1, c: ca });
+          const exRef = XLSX.utils.encode_cell({ r: excelRow - 1, c: ex });
+          const caVal = aoa[i + 2][ca], exVal = aoa[i + 2][ex];
+          const has = caVal !== "" || exVal !== "";
+          ws[XLSX.utils.encode_cell({ r: excelRow - 1, c: tot })] = has
+            ? { t: "n", f: `SUM(${caRef}:${exRef})`, v: Number(caVal || 0) + Number(exVal || 0) }
+            : { t: "s", f: `IF(COUNT(${caRef}:${exRef})=0,"",SUM(${caRef}:${exRef}))`, v: "" };
+        });
+      });
+
+      XLSX.utils.book_append_sheet(wb, ws, c.name.slice(0, 31));
       sheets++;
     }
     setBusy(false);
-    if (!sheets) return setMsg("No students found to put in the template.");
+    if (!sheets) return setMsg("No students or subjects found to put in the template.");
     const label = classId === "all" ? "All-Classes" : targets()[0]?.name ?? "Class";
-    XLSX.writeFile(wb, `${label}-scores.xlsx`);
-    setMsg(`Template downloaded (${sheets} sheet${sheets > 1 ? "s" : ""}). Fill CA and Exam (blank = no score). Do not edit Login ID, headers or tab names.`);
+    XLSX.writeFile(wb, `${label}-broadsheet.xlsx`);
+    setMsg(`Template downloaded (${sheets} sheet${sheets > 1 ? "s" : ""}). Fill CA and Exam (blank = no score); Total is worked out for you. Do not change student names, subject headings or tab names.`);
   }
 
+  // ---------- Upload: reads the school's layout ----------
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -88,38 +123,78 @@ export default function Broadsheet() {
     const groups: Group[] = [];
     const errors: string[] = [];
     const skipped: string[] = [];
+    const notFound: string[] = [];
     for (const sheetName of wb.SheetNames) {
       const cls = classId === "all"
-        ? classes.find((c) => c.name.trim().toLowerCase() === sheetName.trim().toLowerCase())
+        ? classes.find((c) => norm(c.name) === norm(sheetName))
         : classes.find((c) => c.id === classId);
       if (!cls || (classId !== "all" && sheetName !== wb.SheetNames[0])) { skipped.push(sheetName); continue; }
       const d = await fetchClass(cls.id);
       if (!d) { setBusy(false); return; }
-      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheetName], { defval: "" });
-      const rows: Row[] = json.map((row) => {
-        const loginId = String(row["Login ID"] ?? "").trim();
+
+      const grid = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, defval: "" });
+      const head = grid[0] ?? [];
+      const maxRow = grid[1] ?? [];
+
+      // Find each subject group from the headings (merged cell value sits in its first column)
+      const bySubject = new Map(d.subjects.map((s) => [norm(s.name), s]));
+      const cols: { s: Opt; ca: number; exam: number; caMax: number; exMax: number }[] = [];
+      for (let c = 1; c < head.length; c++) {
+        const t = norm(head[c]);
+        if (!t) continue;
+        const s = bySubject.get(t);
+        if (!s) { errors.push(`${cls.name}: subject "${String(head[c]).trim()}" is not one of this class's subjects`); continue; }
+        const caMax = Number(maxRow[c]) > 0 ? Number(maxRow[c]) : 40;
+        const exMax = Number(maxRow[c + 1]) > 0 ? Number(maxRow[c + 1]) : 60;
+        cols.push({ s, ca: c, exam: c + 1, caMax, exMax });
+      }
+
+      // Match students by name
+      const byName = new Map<string, Stu[]>();
+      for (const st of d.students) {
+        const k = norm(st.name);
+        byName.set(k, [...(byName.get(k) ?? []), st]);
+      }
+
+      const rows: Row[] = [];
+      for (let i = 2; i < grid.length; i++) {
+        const line = grid[i];
+        const nm = norm(line[0]);
+        if (!nm) continue;
+        const found = byName.get(nm);
+        if (!found) { notFound.push(`${cls.name}: ${String(line[0]).trim()}`); continue; }
+        if (found.length > 1) { errors.push(`${cls.name}: two students are named "${String(line[0]).trim()}"`); continue; }
+        const st = found[0];
         const scores: Row["scores"] = [];
-        for (const s of d.subjects) {
-          for (const [col, kind] of [[`${s.name} CA`, "ca"], [`${s.name} Exam`, "exam"]] as const) {
-            const raw = row[col];
-            if (raw === "" || raw === undefined) continue;
-            const n = Number(raw);
-            if (!Number.isInteger(n) || n < 0 || n > 100) errors.push(`${cls.name} ${loginId}: ${col} = "${raw}"`);
-            else scores.push({ subjectId: s.id, kind, score: n });
+        for (const col of cols) {
+          for (const [at, kind, mx, label] of [
+            [col.ca, "ca", col.caMax, "CA"],
+            [col.exam, "exam", col.exMax, "Exam"],
+          ] as const) {
+            const raw = line[at];
+            if (raw === "" || raw === undefined || raw === null) continue;
+            const n = Math.round(Number(raw));
+            if (Number.isNaN(n) || n < 0 || n > mx) errors.push(`${cls.name} ${st.name}: ${col.s.name} ${label} = "${raw}" (max ${mx})`);
+            else scores.push({ subjectId: col.s.id, kind, score: n });
           }
         }
-        return { loginId, scores };
-      }).filter((r) => r.loginId);
+        rows.push({ loginId: st.login_id, scores });
+      }
       groups.push({ classId: cls.id, className: cls.name, rows });
     }
     setBusy(false);
     if (errors.length) {
       setPending([]);
-      return setMsg(`Fix these and re-upload: ${errors.slice(0, 8).join("; ")}${errors.length > 8 ? "…" : ""}`);
+      return setMsg(`Fix these and re-upload: ${errors.slice(0, 8).join("; ")}${errors.length > 8 ? ` … and ${errors.length - 8} more` : ""}`);
     }
     setPending(groups);
     const n = groups.reduce((a, g) => a + g.rows.length, 0);
-    setMsg(`${n} students read from ${groups.length} class${groups.length === 1 ? "" : "es"}.${skipped.length ? ` Skipped tabs (no matching class): ${skipped.join(", ")}.` : ""} Press Save scores.`);
+    setMsg(
+      `${n} students read from ${groups.length} class${groups.length === 1 ? "" : "es"}.` +
+      (skipped.length ? ` Skipped tabs (no matching class): ${skipped.join(", ")}.` : "") +
+      (notFound.length ? ` Names NOT found on the website (not saved): ${notFound.slice(0, 12).join("; ")}${notFound.length > 12 ? ` … and ${notFound.length - 12} more` : ""}.` : "") +
+      " Press Save scores."
+    );
   }
 
   async function post(cid: string, body: object) {

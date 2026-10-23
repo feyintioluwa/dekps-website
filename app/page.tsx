@@ -16,8 +16,10 @@ export default function Home() {
         <span>2026 / 2027 ACADEMIC SESSION</span>
         <h2>Academic and Moral Excellence</h2>
         <p>Welcome to De Kings Perfection Private School. Parents and students can check results securely online.</p>
-        <Link className="hm-btn" href="/results">Check Student Result</Link>{" "}
-        <Link className="hm-btn" href="/cbt">Take Test / Exam</Link>
+        <div className="hm-actions">
+          <Link className="hm-btn" href="/results">Check Student Result</Link>
+          <Link className="hm-btn" href="/cbt">Take Test / Exam</Link>
+        </div>
       </section>
 
       <section className="hm-cards">

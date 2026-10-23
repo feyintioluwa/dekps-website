@@ -8,10 +8,15 @@
 .hm-hero h2{font-size:clamp(2rem,5vw,3.4rem);line-height:1.1;margin-bottom:14px}
 .hm-hero p{max-width:620px;margin:0 auto 28px;color:#d7e2ee}
 .hm-btn{display:inline-block;background:#d4ad58;color:#071f3d;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none}
+.hm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
+.hm-actions .hm-btn{text-align:center}
 .hm-cards{width:min(1000px,92%);margin:-50px auto 60px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .hm-card{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:22px;box-shadow:0 12px 35px rgba(7,31,61,.09)}
 .hm-card h3{color:#071f3d;margin-bottom:6px}
 .hm-card p{color:#687385;font-size:.92rem}
 .hm-foot{margin-top:auto;background:#071f3d;color:#aebdcc;border-top:3px solid #d4ad58;text-align:center;padding:26px 12px;font-size:.85rem}
 .hm-foot strong{color:#fff}
-@media(max-width:700px){.hm-cards{grid-template-columns:1fr}}
+@media(max-width:700px){
+  .hm-cards{grid-template-columns:1fr}
+  .hm-actions{flex-direction:column;align-items:stretch;max-width:340px;margin:0 auto}
+}
