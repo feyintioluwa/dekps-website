@@ -14,6 +14,7 @@ const NAV = [
   ["/admin/electives", "🧪", "SSS Subjects"],
   ["/admin/broadsheet", "📑", "Scores & Results"],
   ["/admin/cbt", "📝", "Tests & Exams"],
+  ["/admin/terms", "📅", "Terms & Sessions"],
 ] as const;
 
 const STORE = "dkpsAdminKey";
