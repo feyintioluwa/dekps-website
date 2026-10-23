@@ -185,11 +185,18 @@ export default function AdminCbt() {
             <option value="">{!f.classId ? "Select class first" : classSubjects.length ? "Select subject" : "No subjects set for this class"}</option>
             {classSubjects.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value, maxScore: e.target.value === "exam" ? "60" : "40" })}><option value="test1">Test (40 marks)</option><option value="exam">Exam (60 marks)</option></select>
+          <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value, maxScore: e.target.value === "exam" ? "60" : "40" })}><option value="test1">Test</option><option value="exam">Exam (60 marks)</option></select>
           <div className="adm-row">
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Maximum score (set by Test / Exam)</label>
-              <input value={f.maxScore} readOnly />
+              <label style={labelStyle}>Maximum score (marks)</label>
+              {f.kind === "exam" ? (
+                <input value="60" readOnly />
+              ) : (
+                <select value={f.maxScore} onChange={(e) => setF({ ...f, maxScore: e.target.value })}>
+                  <option value="20">20 marks</option>
+                  <option value="40">40 marks</option>
+                </select>
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Time allowed (minutes)</label>

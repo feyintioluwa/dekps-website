@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       term_id: b.termId, class_id: b.classId, subject_id: b.subjectId,
       kind: b.kind === "exam" ? "exam" : "test1",
       mode: "cbt",
-      max_score: b.kind === "exam" ? 60 : 40,
+      max_score: b.kind === "exam" ? 60 : Number(b.maxScore) === 20 ? 20 : 40,
       duration_minutes: Number(b.duration),
       start_at: b.startAt || null, end_at: b.endAt || null,
       opens_at: b.startAt || null, closes_at: b.endAt || null,
