@@ -124,6 +124,14 @@ export default function AdminCbt() {
     await post({ action: "deleteAssessment", assessmentId: sel });
     setSel(""); setQlist([]); setRows([]); await load(); setMsg("Deleted.");
   });
+  const clearDrafts = () => guard(async () => {
+    const n = asms.filter((a) => !a.is_published).length;
+    if (!confirm(`Delete all ${n} draft tests/exams? Drafts that students have started, or whose questions are used in an exam, are kept. This cannot be undone.`)) return;
+    const d = await post({ action: "deleteDrafts" });
+    setSel(""); setQlist([]); setRows([]); setEditQ(null);
+    await load();
+    setMsg(`${d.deleted} draft(s) deleted` + (d.skipped ? `, ${d.skipped} kept (started by students or used in an exam).` : "."));
+  });
   const toText = (q: QRow) =>
     `${q.question}\nA) ${q.option_a}\nB) ${q.option_b}${q.option_c ? `\nC) ${q.option_c}` : ""}${q.option_d ? `\nD) ${q.option_d}` : ""}\nAnswer: ${q.correct}`;
   const saveQuestion = (id: string) => guard(async () => {
@@ -212,6 +220,10 @@ export default function AdminCbt() {
             <option value="">Select a test/exam</option>
             {asms.map((a) => <option key={a.id} value={a.id}>{a.kind === "exam" ? "Exam" : "Test"} · {name(classes, a.class_id)} · {name(subjects, a.subject_id)} {a.is_published ? "(published)" : "(draft)"}</option>)}
           </select>
+
+          {asms.some((a) => !a.is_published) && (
+            <button style={{ background: "#9e1824" }} disabled={busy} onClick={clearDrafts}>Clear all drafts</button>
+          )}
 
           {sel && (
             <>

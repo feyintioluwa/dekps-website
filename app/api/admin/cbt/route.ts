@@ -1,5 +1,25 @@
 import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+// Deletes one test/exam only if it is safe: nobody started it and none of its questions are used in an exam.
+async function removeIfSafe(sb: SupabaseClient, id: string): Promise<{ status: "deleted" | "started" | "used" | "error"; message?: string }> {
+  const { count: tries } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", id);
+  if (tries) return { status: "started" };
+  const { data: own } = await sb.from("questions").select("id").eq("assessment_id", id);
+  const ownIds = (own ?? []).map((q) => q.id);
+  if (ownIds.length) {
+    const { count: used } = await sb.from("exam_questions").select("question_id", { count: "exact", head: true }).in("question_id", ownIds);
+    if (used) return { status: "used" };
+  }
+  const e1 = await sb.from("exam_questions").delete().eq("exam_id", id);
+  if (e1.error) return { status: "error", message: e1.error.message };
+  const e2 = await sb.from("questions").delete().eq("assessment_id", id);
+  if (e2.error) return { status: "error", message: e2.error.message };
+  const e3 = await sb.from("assessments").delete().eq("id", id);
+  if (e3.error) return { status: "error", message: e3.error.message };
+  return { status: "deleted" };
+}
 
 function client(request: Request) {
   return adminClient(request);
@@ -193,6 +213,21 @@ export async function POST(request: Request) {
     const { error } = await sb.from("exam_questions").delete().eq("exam_id", b.examId).eq("question_id", b.questionId);
     if (error) return fail(error.message);
     return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === "deleteDrafts") {
+    const { data: drafts, error } = await sb.from("assessments").select("id, kind").or("is_published.eq.false,is_published.is.null");
+    if (error) return fail(error.message);
+    // exams first, so tests whose questions they borrowed can be removed afterwards
+    const ordered = [...(drafts ?? [])].sort((x, y) => (x.kind === "exam" ? 0 : 1) - (y.kind === "exam" ? 0 : 1));
+    let deleted = 0, skipped = 0;
+    for (const d of ordered) {
+      const r = await removeIfSafe(sb, d.id);
+      if (r.status === "deleted") deleted++;
+      else if (r.status === "error") return fail(r.message ?? "Failed");
+      else skipped++;
+    }
+    return NextResponse.json({ ok: true, deleted, skipped });
   }
 
   return fail("Unknown action", 400);
