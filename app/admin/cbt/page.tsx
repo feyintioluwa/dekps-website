@@ -66,12 +66,20 @@ export default function AdminCbt() {
       setMsg("Creating...");
       const d = await post({ action: "create", ...f });
       await load();
-      const ids: string[] = d.ids ?? [d.id];
+      const ids: string[] = d.ids ?? [];
+      const skipped: string[] = d.skipped ?? [];
+      const note = skipped.length ? ` Already existed, so not created again: ${skipped.join(", ")}. Find them in Manage.` : "";
+      if (!ids.length) {
+        if (d.existingId) setSel(d.existingId);
+        setAlso(new Set());
+        setMsg("Nothing new was created." + note);
+        return;
+      }
       setSel(ids[0]);
       setAlso(new Set(ids.slice(1)));
-      setMsg(ids.length > 1
+      setMsg((ids.length > 1
         ? `${ids.length} tests created (one per class). Now add questions below: they will be added to all of them.`
-        : "Created. Now add questions below.");
+        : "Created. Now add questions below.") + note);
     } catch (e) { setMsg("Could not create: " + (e as Error).message); }
   }
   async function addQuestions() {

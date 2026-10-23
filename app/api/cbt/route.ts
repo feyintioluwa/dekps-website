@@ -37,7 +37,19 @@ export async function POST(request: Request) {
     // One test is created for EVERY class ticked (same settings, separate copies)
     const classIds = ((b.classIds ?? (b.classId ? [b.classId] : [])) as string[]).filter(Boolean);
     if (!classIds.length) return fail("Choose at least one class", 400);
-    const rows = classIds.map((classId) => ({
+    // A class can have only one test of each type per subject per term: skip classes that already have it
+    const { data: existing } = await sb.from("assessments").select("id, class_id")
+      .eq("term_id", b.termId).eq("subject_id", b.subjectId)
+      .eq("kind", b.kind === "exam" ? "exam" : "test1").in("class_id", classIds);
+    const have = new Set((existing ?? []).map((e) => e.class_id));
+    const freshIds = classIds.filter((cid) => !have.has(cid));
+    let skippedNames: string[] = [];
+    if (have.size) {
+      const { data: cn } = await sb.from("classes").select("id, name").in("id", [...have]);
+      skippedNames = (cn ?? []).map((x) => x.name);
+    }
+    if (!freshIds.length) return NextResponse.json({ ok: true, ids: [], existingId: existing?.[0]?.id ?? null, skipped: skippedNames });
+    const rows = freshIds.map((classId) => ({
       term_id: b.termId, class_id: classId, subject_id: b.subjectId,
       kind: b.kind === "exam" ? "exam" : "test1",
       mode: "cbt",
@@ -50,7 +62,7 @@ export async function POST(request: Request) {
     }));
     const { data, error } = await sb.from("assessments").insert(rows).select("id, class_id");
     if (error) return fail(error.message);
-    return NextResponse.json({ ok: true, id: data[0].id, ids: data.map((d) => d.id) });
+    return NextResponse.json({ ok: true, id: data[0].id, ids: data.map((d) => d.id), existingId: existing?.[0]?.id ?? null, skipped: skippedNames });
   }
 
   if (b.action === "questions") {
