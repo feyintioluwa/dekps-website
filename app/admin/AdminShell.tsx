@@ -29,6 +29,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const [input, setInput] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [current, setCurrent] = useState("");
   const path = usePathname();
 
   useEffect(() => {
@@ -39,6 +40,18 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       else { sessionStorage.removeItem(STORE); setKey(""); }
     });
   }, []);
+
+  // Show the current term in the top bar (re-checked each time you open a page)
+  useEffect(() => {
+    if (!key) return;
+    fetch("/api/admin/terms", { headers: { "x-admin-key": key } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const t = d?.terms?.find((x: { is_active: boolean | null }) => x.is_active);
+        setCurrent(t ? `${t.term} — ${t.session}` : "No current term set");
+      })
+      .catch(() => {});
+  }, [key, path]);
 
   async function login(e: FormEvent) {
     e.preventDefault();
@@ -51,7 +64,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     } catch { setErr("Could not reach the server."); }
     setBusy(false);
   }
-  function logout() { sessionStorage.removeItem(STORE); setKey(""); setInput(""); }
+  function logout() { sessionStorage.removeItem(STORE); setKey(""); setInput(""); setCurrent(""); }
 
   if (key === null) return <div className="gate"><p style={{ color: "#fff" }}>Loading…</p></div>;
 
@@ -94,7 +107,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
         <div className="shell-main">
-          <div className="shell-top"><h1>{title}</h1><span>2026 / 2027 Academic Session</span></div>
+          <div className="shell-top"><h1>{title}</h1><span>{current}</span></div>
           <div className="shell-body">{children}</div>
         </div>
       </div>

@@ -69,6 +69,7 @@ export default function ResultsPage() {
   const [selectedId, setSelectedId] = useState("");
   const resultRef = useRef<HTMLElement>(null);
   const firstShow = useRef(true);
+  const [sessionLabel, setSessionLabel] = useState("");
 
   useEffect(() => {
     if (!student) {
@@ -83,6 +84,12 @@ export default function ResultsPage() {
     return () => clearTimeout(timer);
   }, [student]);
 
+    useEffect(() => {
+    fetch("/api/session")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.session) setSessionLabel(d.session); })
+      .catch(() => {});
+  }, []);
   async function request(id: string, code: string, resultId?: number) {
     const response = await fetch("/api/result", {
       method: "POST",
@@ -208,7 +215,7 @@ export default function ResultsPage() {
       <main>
         <section className="hero">
           <div className="hero-content">
-            <div className="hero-badge">2026 / 2027 ACADEMIC SESSION</div>
+                        <div className="hero-badge">{sessionLabel ? sessionLabel.replace("/", " / ") + " " : ""}ACADEMIC SESSION</div>
             <h2>Check Your Academic Result</h2>
             <p>
               Enter your Student Login ID and PIN to securely access your
@@ -464,7 +471,7 @@ export default function ResultsPage() {
             <strong>De Kings Perfection Private School</strong>
             <p>Academic and Moral Excellence</p>
           </div>
-          <div className="footer-session">2026/2027 Academic Session</div>
+                    <div className="footer-session">{sessionLabel ? sessionLabel + " " : ""}Academic Session</div>
         </div>
       </footer>
     </>
