@@ -5,8 +5,9 @@ import "../students/admin.css";
 import { useAdminKey } from "../AdminShell";
 
 type Opt = { id: string; name: string };
-type Asm = { id: string; kind: string; class_id: string; subject_id: string; term_id: string; max_score: number; duration_minutes: number; start_at: string | null; end_at: string | null; is_published: boolean };
+type Asm = { id: string; kind: string; class_id: string; subject_id: string; max_score: number; duration_minutes: number; start_at: string | null; end_at: string | null; is_published: boolean; instructions: string | null };
 type Link = { class_id: string; subject_id: string };
+type QRow = { id: string; position: number | null; question: string; option_a: string; option_b: string; option_c: string; option_d: string; correct: string; pulled: boolean };
 type Q = { question: string; a: string; b: string; c: string; d: string; correct: string };
 type Row = { id: string; name: string; loginId: string; submitted_at: string | null; score: number | null };
 
@@ -43,7 +44,12 @@ export default function AdminCbt() {
   const [qtext, setQtext] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [qcount, setQcount] = useState(0);
-  const [also, setAlso] = useState<Set<string>>(new Set());
+  const [qlist, setQlist] = useState<QRow[]>([]);
+  const [editQ, setEditQ] = useState<string | null>(null);
+  const [editQText, setEditQText] = useState("");
+  const [editDur, setEditDur] = useState("");
+  const [editInstr, setEditInstr] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const h = { "Content-Type": "application/json", "x-admin-key": key };
   const post = async (body: object) => {
@@ -65,30 +71,20 @@ export default function AdminCbt() {
     try {
       setMsg("Creating...");
       const d = await post({ action: "create", ...f });
-      await load();
-      const ids: string[] = d.ids ?? [];
-      const skipped: string[] = d.skipped ?? [];
-      const note = skipped.length ? ` Already existed, so not created again: ${skipped.join(", ")}. Find them in Manage.` : "";
-      if (!ids.length) {
-        if (d.existingId) setSel(d.existingId);
-        setAlso(new Set());
-        setMsg("Nothing new was created." + note);
-        return;
-      }
-      setSel(ids[0]);
-      setAlso(new Set(ids.slice(1)));
-      setMsg((ids.length > 1
-        ? `${ids.length} tests created (one per class). Now add questions below: they will be added to all of them.`
-        : "Created. Now add questions below.") + note);
+      await load(); selectAsm(d.id, f.duration, f.instructions);
+      setMsg("Created. Now add questions below.");
     } catch (e) { setMsg("Could not create: " + (e as Error).message); }
   }
   async function addQuestions() {
     const { qs, errors } = parse(qtext);
     if (errors.length) return setMsg(errors.join("; "));
+    if (busy) return;
+    setBusy(true);
     try {
-      const d = await post({ action: "questions", assessmentIds: [sel, ...also], questions: qs });
-      setMsg(`${d.added} questions added to ${d.tests} test${d.tests > 1 ? "s" : ""}.`); setQtext(""); loadResults();
+      const d = await post({ action: "questions", assessmentId: sel, questions: qs });
+      setMsg(`${d.added} questions added.`); setQtext(""); loadResults(); loadQuestions();
     } catch (e) { setMsg((e as Error).message); }
+    finally { setBusy(false); }
   }
   async function publish(v: boolean) {
     try { await post({ action: "publish", assessmentId: sel, value: v }); setMsg(v ? "Published: students can see it." : "Unpublished."); load(); }
@@ -103,28 +99,59 @@ export default function AdminCbt() {
     catch (e) { setMsg((e as Error).message); }
   }
 
-  async function copyQuestions() {
-    if (!confirm("Copy this test's questions into the same test of the other classes? Classes that already have questions are skipped.")) return;
-    try {
-      const d = await post({ action: "copy", assessmentId: sel, targetIds: siblings.map((a) => a.id) });
-      setMsg(`${d.questions} questions copied into ${d.copied} class${d.copied === 1 ? "" : "es"}.${d.skipped ? ` ${d.skipped} skipped (already had questions or students had started).` : ""}`);
-    } catch (e) { setMsg((e as Error).message); }
+  async function loadQuestions(id: string = sel) {
+    if (!id) return;
+    try { const d = await post({ action: "listQuestions", assessmentId: id }); setQlist(d.questions); }
+    catch (e) { setMsg((e as Error).message); }
   }
+  function selectAsm(id: string, dur?: string, instr?: string) {
+    const a = asms.find((x) => x.id === id);
+    setSel(id); setRows([]); setQlist([]); setEditQ(null);
+    setEditDur(dur ?? String(a?.duration_minutes ?? ""));
+    setEditInstr(instr ?? a?.instructions ?? "");
+    if (id) loadQuestions(id);
+  }
+  async function guard(fn: () => Promise<void>) {
+    setBusy(true);
+    try { await fn(); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  }
+  const saveDetails = () => guard(async () => {
+    await post({ action: "updateAssessment", assessmentId: sel, duration: editDur, instructions: editInstr });
+    await load(); setMsg("Details saved.");
+  });
+  const deleteTest = () => guard(async () => {
+    if (!confirm("Delete this test/exam and all its questions? This cannot be undone.")) return;
+    await post({ action: "deleteAssessment", assessmentId: sel });
+    setSel(""); setQlist([]); setRows([]); await load(); setMsg("Deleted.");
+  });
+  const toText = (q: QRow) =>
+    `${q.question}\nA) ${q.option_a}\nB) ${q.option_b}${q.option_c ? `\nC) ${q.option_c}` : ""}${q.option_d ? `\nD) ${q.option_d}` : ""}\nAnswer: ${q.correct}`;
+  const saveQuestion = (id: string) => guard(async () => {
+    const { qs, errors } = parse(editQText);
+    if (errors.length || qs.length !== 1) { setMsg("Keep one question: the question, A) to D) lines, then Answer: B"); return; }
+    await post({ action: "updateQuestion", question: { id, ...qs[0] } });
+    setEditQ(null); await loadQuestions(); setMsg("Question saved.");
+  });
+  const deleteQuestion = (id: string) => guard(async () => {
+    if (!confirm("Delete this question? This cannot be undone.")) return;
+    await post({ action: "deleteQuestion", questionId: id });
+    await loadQuestions(); loadResults(); setMsg("Question deleted.");
+  });
+  const removePulled = (id: string) => guard(async () => {
+    if (!confirm("Remove this question from the exam? It stays in its original test.")) return;
+    await post({ action: "removeFromExam", examId: sel, questionId: id });
+    await loadQuestions(); loadResults(); setMsg("Removed from the exam.");
+  });
 
   const [srcSel, setSrcSel] = useState<Set<string>>(new Set());
   const [pullN, setPullN] = useState("20");
   async function pull() {
     try { const d = await post({ action: "pull", assessmentId: sel, sourceIds: [...srcSel], count: Number(pullN) });
-      setMsg(`${d.added} questions pulled into this exam (${d.available} were available).`); loadResults(); }
+      setMsg(`${d.added} questions pulled into this exam (${d.available} were available).`); loadResults(); loadQuestions(); }
     catch (e) { setMsg((e as Error).message); }
   }
-
   const classSubjects = subjects.filter((s) => links.some((l) => l.class_id === f.classId && l.subject_id === s.id));
   const cur = asms.find((a) => a.id === sel);
-  // Other tests of the same kind, subject and term (the other classes' copies)
-  const siblings = cur
-    ? asms.filter((a) => a.id !== cur.id && a.kind === cur.kind && a.subject_id === cur.subject_id && a.term_id === cur.term_id)
-    : [];
   const termLabel = (t: Record<string, unknown>) =>
     t.term && t.session ? `${t.term} — ${t.session}` : String(t.name ?? t.term ?? t.label ?? t.id);
 
@@ -136,7 +163,7 @@ export default function AdminCbt() {
   return (
     <div className="adm">
       <h1>Tests &amp; Exams (CBT) — Admin</h1>
-
+      
       {msg && <p className="adm-msg">{msg}</p>}
 
       {classes.length > 0 && (
@@ -158,18 +185,11 @@ export default function AdminCbt() {
             <option value="">{!f.classId ? "Select class first" : classSubjects.length ? "Select subject" : "No subjects set for this class"}</option>
             {classSubjects.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value, maxScore: e.target.value === "exam" ? "60" : "40" })}><option value="test1">Test</option><option value="exam">Exam (60 marks)</option></select>
+          <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value, maxScore: e.target.value === "exam" ? "60" : "40" })}><option value="test1">Test (40 marks)</option><option value="exam">Exam (60 marks)</option></select>
           <div className="adm-row">
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Maximum score (set by Test / Exam)</label>
-              {f.kind === "exam" ? (
-                <input value="60" readOnly />
-              ) : (
-                <select value={f.maxScore} onChange={(e) => setF({ ...f, maxScore: e.target.value })}>
-                  <option value="40">40 marks</option>
-                  <option value="20">20 marks (practical is the other 20)</option>
-                </select>
-              )}
+              <input value={f.maxScore} readOnly />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Time allowed (minutes)</label>
@@ -181,7 +201,7 @@ export default function AdminCbt() {
           {msg && <p className="adm-msg">{msg}</p>}
 
           <h2>2. Manage</h2>
-          <select value={sel} onChange={(e) => { setSel(e.target.value); setRows([]); setAlso(new Set()); }}>
+          <select value={sel} onChange={(e) => selectAsm(e.target.value)}>
             <option value="">Select a test/exam</option>
             {asms.map((a) => <option key={a.id} value={a.id}>{a.kind === "exam" ? "Exam" : "Test"} · {name(classes, a.class_id)} · {name(subjects, a.subject_id)} {a.is_published ? "(published)" : "(draft)"}</option>)}
           </select>
@@ -193,36 +213,53 @@ export default function AdminCbt() {
                 <button onClick={loadResults}>View results</button>
                 <button onClick={finalize}>Finalize overdue</button>
               </div>
-              {siblings.length > 0 && (
-                <>
-                  <h3>Same questions for other classes</h3>
-                  <p style={{ fontSize: ".85rem", color: "#687385" }}>
-                    This same {cur?.kind === "exam" ? "exam" : "test"} also exists for: {siblings.map((a) => name(classes, a.class_id)).join(", ")}.
-                    Add the questions to ONE class first, then press the button to copy them to the others. Classes that already have questions are skipped.
-                  </p>
-                  <button onClick={copyQuestions}>Copy these questions to the other classes</button>
-                </>
-              )}
+              <h3>Test details</h3>
+              <div className="adm-row">
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Time allowed (minutes)</label>
+                  <input value={editDur} onChange={(e) => setEditDur(e.target.value)} />
+                </div>
+              </div>
+              <textarea rows={2} placeholder="Instructions shown to students (optional)" value={editInstr} onChange={(e) => setEditInstr(e.target.value)} />
+              <div className="adm-row">
+                <button disabled={busy} onClick={saveDetails}>Save details</button>
+                <button style={{ background: "#9e1824" }} disabled={busy} onClick={deleteTest}>Delete this {cur?.kind === "exam" ? "exam" : "test"}</button>
+              </div>
+
+              <h3>Questions ({qlist.length})</h3>
+              {qlist.length === 0 && <p>No questions yet.</p>}
+              {qlist.map((q, i) => (
+                <div key={q.id} style={{ border: "1px solid #dfe4ea", borderRadius: 10, padding: 12, marginBottom: 10 }}>
+                  {editQ === q.id ? (
+                    <>
+                      <textarea rows={7} value={editQText} onChange={(e) => setEditQText(e.target.value)} />
+                      <div className="adm-row">
+                        <button disabled={busy} onClick={() => saveQuestion(q.id)}>Save question</button>
+                        <button disabled={busy} onClick={() => setEditQ(null)}>Cancel</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ color: "#18212f", fontWeight: 600, whiteSpace: "pre-wrap" }}>{i + 1}. {q.question}{q.pulled ? " (pulled from a test)" : ""}</p>
+                      {(["A", "B", "C", "D"] as const).map((L) => {
+                        const t = q[`option_${L.toLowerCase()}` as "option_a"];
+                        return t ? <p key={L} style={{ fontWeight: q.correct === L ? 700 : 400, color: q.correct === L ? "#1b7a3a" : "#687385" }}>{L}) {t}{q.correct === L ? " ✓" : ""}</p> : null;
+                      })}
+                      <div className="adm-row" style={{ marginTop: 8 }}>
+                        {!q.pulled && <button disabled={busy} onClick={() => { setEditQ(q.id); setEditQText(toText(q)); }}>Edit</button>}
+                        {q.pulled
+                          ? <button style={{ background: "#9e1824" }} disabled={busy} onClick={() => removePulled(q.id)}>Remove from exam</button>
+                          : <button style={{ background: "#9e1824" }} disabled={busy} onClick={() => deleteQuestion(q.id)}>Delete</button>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+
               <h3>Add questions</h3>
               <p style={{ fontSize: ".85rem", color: "#687385" }}>One block per question, blank line between blocks:<br />What is 2+2?<br />A) 3<br />B) 4<br />C) 5<br />D) 6<br />Answer: B</p>
               <textarea rows={12} value={qtext} onChange={(e) => setQtext(e.target.value)} />
-              {siblings.length > 0 && (
-                <>
-                  <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 8 }}>
-                    Also add these questions to the same {cur?.kind === "exam" ? "exam" : "test"} in other classes. Only tick a class whose copy does not already have these questions, and not one that students have already started.
-                  </p>
-                  {siblings.map((a) => (
-                    <label key={a.id} style={{ display: "block" }}>
-                      <input type="checkbox" style={{ width: "auto", marginRight: 8 }} checked={also.has(a.id)}
-                        onChange={() => { const n = new Set(also); if (n.has(a.id)) n.delete(a.id); else n.add(a.id); setAlso(n); }} />
-                      {name(classes, a.class_id)} {a.is_published ? "(published)" : "(draft)"}
-                    </label>
-                  ))}
-                </>
-              )}
-              <button disabled={!qtext.trim()} onClick={addQuestions}>
-                {also.size ? `Add questions to ${also.size + 1} tests` : "Add questions"}
-              </button>
+              <button disabled={!qtext.trim() || busy} onClick={addQuestions}>{busy ? "Adding..." : "Add questions"}</button>
 
               {cur?.kind === "exam" && (
                 <>
@@ -231,7 +268,7 @@ export default function AdminCbt() {
                   {asms.filter((a) => a.kind === "test1" && a.subject_id === cur.subject_id).map((a) => (
                     <label key={a.id} style={{ display: "block" }}>
                       <input type="checkbox" style={{ width: "auto", marginRight: 8 }} checked={srcSel.has(a.id)}
-                        onChange={() => { const n = new Set(srcSel); if (n.has(a.id)) n.delete(a.id); else n.add(a.id); setSrcSel(n); }} />
+                        onChange={() => { const n = new Set(srcSel); n.has(a.id) ? n.delete(a.id) : n.add(a.id); setSrcSel(n); }} />
                       {name(classes, a.class_id)} test
                     </label>
                   ))}

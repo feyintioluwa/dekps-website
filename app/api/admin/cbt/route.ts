@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     sb.from("classes").select("id, name").order("sort_order"),
     sb.from("subjects").select("id, name").order("name"),
     sb.from("terms").select("*"),
-    sb.from("assessments").select("id, kind, class_id, subject_id, term_id, max_score, duration_minutes, start_at, end_at, is_published, created_at").order("created_at", { ascending: false }).limit(60),
+    sb.from("assessments").select("id, kind, class_id, subject_id, term_id, max_score, duration_minutes, start_at, end_at, is_published, instructions, created_at").order("created_at", { ascending: false }).limit(60),
     sb.from("class_subjects").select("class_id, subject_id"),
   ]);
   return NextResponse.json({
@@ -34,79 +34,34 @@ export async function POST(request: Request) {
   const fail = (m: string, s = 500) => NextResponse.json({ error: m }, { status: s });
 
   if (b.action === "create") {
-    // One test is created for EVERY class ticked (same settings, separate copies)
-    const classIds = ((b.classIds ?? (b.classId ? [b.classId] : [])) as string[]).filter(Boolean);
-    if (!classIds.length) return fail("Choose at least one class", 400);
-    // A class can have only one test of each type per subject per term: skip classes that already have it
-    const { data: existing } = await sb.from("assessments").select("id, class_id")
-      .eq("term_id", b.termId).eq("subject_id", b.subjectId)
-      .eq("kind", b.kind === "exam" ? "exam" : "test1").in("class_id", classIds);
-    const have = new Set((existing ?? []).map((e) => e.class_id));
-    const freshIds = classIds.filter((cid) => !have.has(cid));
-    let skippedNames: string[] = [];
-    if (have.size) {
-      const { data: cn } = await sb.from("classes").select("id, name").in("id", [...have]);
-      skippedNames = (cn ?? []).map((x) => x.name);
-    }
-    if (!freshIds.length) return NextResponse.json({ ok: true, ids: [], existingId: existing?.[0]?.id ?? null, skipped: skippedNames });
-    const rows = freshIds.map((classId) => ({
-      term_id: b.termId, class_id: classId, subject_id: b.subjectId,
+    const row = {
+      term_id: b.termId, class_id: b.classId, subject_id: b.subjectId,
       kind: b.kind === "exam" ? "exam" : "test1",
       mode: "cbt",
-      max_score: b.kind === "exam" ? 60 : (Number(b.maxScore) === 20 ? 20 : 40),
+      max_score: b.kind === "exam" ? 60 : 40,
       duration_minutes: Number(b.duration),
       start_at: b.startAt || null, end_at: b.endAt || null,
       opens_at: b.startAt || null, closes_at: b.endAt || null,
       instructions: b.instructions || null,
       is_published: false,
-    }));
-    const { data, error } = await sb.from("assessments").insert(rows).select("id, class_id");
+    };
+    const { data, error } = await sb.from("assessments").insert(row).select("id").single();
     if (error) return fail(error.message);
-    return NextResponse.json({ ok: true, id: data[0].id, ids: data.map((d) => d.id), existingId: existing?.[0]?.id ?? null, skipped: skippedNames });
+    return NextResponse.json({ ok: true, id: data.id });
   }
 
   if (b.action === "questions") {
     const qs = (b.questions ?? []) as { question: string; a: string; b: string; c: string; d: string; correct: string }[];
-    // The same questions can be added to several tests at once (assessmentIds)
-    const targets = ((b.assessmentIds ?? (b.assessmentId ? [b.assessmentId] : [])) as string[]).filter(Boolean);
-    if (!targets.length || !qs.length) return fail("Nothing to add", 400);
-    for (const assessmentId of targets) {
-      const { data: last } = await sb.from("questions").select("position").eq("assessment_id", assessmentId).order("position", { ascending: false }).limit(1);
-      let pos = last?.[0]?.position ?? 0;
-      const rows = qs.map((q) => ({
-        assessment_id: assessmentId, position: ++pos, question: q.question,
-        option_a: q.a, option_b: q.b, option_c: q.c, option_d: q.d, correct: q.correct,
-      }));
-      const { error } = await sb.from("questions").insert(rows);
-      if (error) return fail(error.message);
-    }
-    return NextResponse.json({ ok: true, added: qs.length, tests: targets.length });
-  }
-
-  if (b.action === "copy") {
-    // Copy the questions of one test into the same test of other classes.
-    // Targets that already have questions, or that students have started, are skipped.
-    const targetIds = ((b.targetIds ?? []) as string[]).filter((x) => x && x !== b.assessmentId);
-    if (!b.assessmentId || !targetIds.length) return fail("Nothing to copy to", 400);
-    const { data: src } = await sb.from("assessments").select("id, kind, subject_id, term_id").eq("id", b.assessmentId).single();
-    const { data: tgts } = await sb.from("assessments").select("id, kind, subject_id, term_id").in("id", targetIds);
-    if (!src) return fail("Test not found", 404);
-    const { data: qs } = await sb.from("questions")
-      .select("position, question, option_a, option_b, option_c, option_d, correct")
-      .eq("assessment_id", b.assessmentId).order("position");
-    if (!qs?.length) return fail("This test has no questions to copy", 400);
-    let copied = 0, skipped = 0;
-    for (const t of tgts ?? []) {
-      if (t.kind !== src.kind || t.subject_id !== src.subject_id || t.term_id !== src.term_id) { skipped++; continue; }
-      const { count: have } = await sb.from("questions").select("id", { count: "exact", head: true }).eq("assessment_id", t.id);
-      const { count: tried } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", t.id);
-      if ((have ?? 0) > 0 || (tried ?? 0) > 0) { skipped++; continue; }
-      const rows = qs.map((q) => ({ assessment_id: t.id, ...q }));
-      const { error } = await sb.from("questions").insert(rows);
-      if (error) return fail(error.message);
-      copied++;
-    }
-    return NextResponse.json({ ok: true, copied, skipped, questions: qs.length });
+    if (!b.assessmentId || !qs.length) return fail("Nothing to add", 400);
+    const { data: last } = await sb.from("questions").select("position").eq("assessment_id", b.assessmentId).order("position", { ascending: false }).limit(1);
+    let pos = last?.[0]?.position ?? 0;
+    const rows = qs.map((q) => ({
+      assessment_id: b.assessmentId, position: ++pos, question: q.question,
+      option_a: q.a, option_b: q.b, option_c: q.c, option_d: q.d, correct: q.correct,
+    }));
+    const { error } = await sb.from("questions").insert(rows);
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true, added: rows.length });
   }
 
   if (b.action === "pull") {
@@ -161,6 +116,83 @@ export async function POST(request: Request) {
       }
     }
     return NextResponse.json({ ok: true, finalized: n });
+  }
+
+  // ---- Edit / delete (admin) ----
+  if (b.action === "listQuestions") {
+    const cols = "id, position, question, option_a, option_b, option_c, option_d, correct";
+    const own = await sb.from("questions").select(cols).eq("assessment_id", b.assessmentId).order("position");
+    if (own.error) return fail(own.error.message);
+    const { data: links } = await sb.from("exam_questions").select("question_id").eq("exam_id", b.assessmentId);
+    const ids = (links ?? []).map((l) => l.question_id);
+    let pulled: typeof own.data = [];
+    if (ids.length) { const r = await sb.from("questions").select(cols).in("id", ids); pulled = r.data ?? []; }
+    return NextResponse.json({
+      questions: [
+        ...(own.data ?? []).map((q) => ({ ...q, pulled: false })),
+        ...(pulled ?? []).map((q) => ({ ...q, pulled: true })),
+      ],
+    });
+  }
+
+  if (b.action === "updateAssessment") {
+    const dur = Math.floor(Number(b.duration));
+    if (!b.assessmentId || !(dur > 0)) return fail("Time allowed must be a number above 0", 400);
+    const { error } = await sb.from("assessments").update({ duration_minutes: dur, instructions: b.instructions || null }).eq("id", b.assessmentId);
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === "deleteAssessment") {
+    const id = b.assessmentId;
+    if (!id) return fail("Missing test", 400);
+    const { count: tries } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", id);
+    if (tries) return fail("Students have already started this one, so it cannot be deleted. Unpublish it instead.", 400);
+    const { data: own } = await sb.from("questions").select("id").eq("assessment_id", id);
+    const ownIds = (own ?? []).map((q) => q.id);
+    if (ownIds.length) {
+      const { count: used } = await sb.from("exam_questions").select("question_id", { count: "exact", head: true }).in("question_id", ownIds);
+      if (used) return fail("Some of its questions are used in an exam. Remove them from that exam first.", 400);
+    }
+    const e1 = await sb.from("exam_questions").delete().eq("exam_id", id);
+    if (e1.error) return fail(e1.error.message);
+    const e2 = await sb.from("questions").delete().eq("assessment_id", id);
+    if (e2.error) return fail(e2.error.message);
+    const e3 = await sb.from("assessments").delete().eq("id", id);
+    if (e3.error) return fail(e3.error.message);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === "updateQuestion") {
+    const q = b.question;
+    if (!q?.id || !q.question || !q.a || !q.b || !["A", "B", "C", "D"].includes(q.correct)) return fail("A question, options A and B, and the answer are required", 400);
+    const { count } = await sb.from("answers").select("question_id", { count: "exact", head: true }).eq("question_id", q.id);
+    if (count) return fail("Students have already answered this question, so it cannot be changed.", 400);
+    const { error } = await sb.from("questions").update({
+      question: q.question, option_a: q.a, option_b: q.b, option_c: q.c ?? "", option_d: q.d ?? "", correct: q.correct,
+    }).eq("id", q.id);
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === "deleteQuestion") {
+    if (!b.questionId) return fail("Missing question", 400);
+    const { count: answered } = await sb.from("answers").select("question_id", { count: "exact", head: true }).eq("question_id", b.questionId);
+    if (answered) return fail("Students have already answered this question, so it cannot be deleted.", 400);
+    const { count: used } = await sb.from("exam_questions").select("question_id", { count: "exact", head: true }).eq("question_id", b.questionId);
+    if (used) return fail("This question is used in an exam. Remove it from that exam first.", 400);
+    const { error } = await sb.from("questions").delete().eq("id", b.questionId);
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true });
+  }
+
+  if (b.action === "removeFromExam") {
+    if (!b.examId || !b.questionId) return fail("Missing exam or question", 400);
+    const { count: tries } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", b.examId);
+    if (tries) return fail("Students have already started this exam, so its questions cannot be changed.", 400);
+    const { error } = await sb.from("exam_questions").delete().eq("exam_id", b.examId).eq("question_id", b.questionId);
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true });
   }
 
   return fail("Unknown action", 400);
