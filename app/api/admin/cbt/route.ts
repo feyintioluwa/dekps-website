@@ -37,11 +37,23 @@ export async function POST(request: Request) {
     // One test is created for EVERY class ticked (same settings, separate copies)
     const classIds = ((b.classIds ?? (b.classId ? [b.classId] : [])) as string[]).filter(Boolean);
     if (!classIds.length) return fail("Choose at least one class", 400);
-    const rows = classIds.map((classId) => ({
+    // A class can have only one test of each type per subject per term: skip classes that already have it
+    const { data: existing } = await sb.from("assessments").select("id, class_id")
+      .eq("term_id", b.termId).eq("subject_id", b.subjectId)
+      .eq("kind", b.kind === "exam" ? "exam" : "test1").in("class_id", classIds);
+    const have = new Set((existing ?? []).map((e) => e.class_id));
+    const freshIds = classIds.filter((cid) => !have.has(cid));
+    let skippedNames: string[] = [];
+    if (have.size) {
+      const { data: cn } = await sb.from("classes").select("id, name").in("id", [...have]);
+      skippedNames = (cn ?? []).map((x) => x.name);
+    }
+    if (!freshIds.length) return NextResponse.json({ ok: true, ids: [], existingId: existing?.[0]?.id ?? null, skipped: skippedNames });
+    const rows = freshIds.map((classId) => ({
       term_id: b.termId, class_id: classId, subject_id: b.subjectId,
       kind: b.kind === "exam" ? "exam" : "test1",
       mode: "cbt",
-      max_score: b.kind === "exam" ? 60 : 40,
+      max_score: b.kind === "exam" ? 60 : (Number(b.maxScore) === 20 ? 20 : 40),
       duration_minutes: Number(b.duration),
       start_at: b.startAt || null, end_at: b.endAt || null,
       opens_at: b.startAt || null, closes_at: b.endAt || null,
@@ -50,7 +62,7 @@ export async function POST(request: Request) {
     }));
     const { data, error } = await sb.from("assessments").insert(rows).select("id, class_id");
     if (error) return fail(error.message);
-    return NextResponse.json({ ok: true, id: data[0].id, ids: data.map((d) => d.id) });
+    return NextResponse.json({ ok: true, id: data[0].id, ids: data.map((d) => d.id), existingId: existing?.[0]?.id ?? null, skipped: skippedNames });
   }
 
   if (b.action === "questions") {
@@ -69,6 +81,32 @@ export async function POST(request: Request) {
       if (error) return fail(error.message);
     }
     return NextResponse.json({ ok: true, added: qs.length, tests: targets.length });
+  }
+
+  if (b.action === "copy") {
+    // Copy the questions of one test into the same test of other classes.
+    // Targets that already have questions, or that students have started, are skipped.
+    const targetIds = ((b.targetIds ?? []) as string[]).filter((x) => x && x !== b.assessmentId);
+    if (!b.assessmentId || !targetIds.length) return fail("Nothing to copy to", 400);
+    const { data: src } = await sb.from("assessments").select("id, kind, subject_id, term_id").eq("id", b.assessmentId).single();
+    const { data: tgts } = await sb.from("assessments").select("id, kind, subject_id, term_id").in("id", targetIds);
+    if (!src) return fail("Test not found", 404);
+    const { data: qs } = await sb.from("questions")
+      .select("position, question, option_a, option_b, option_c, option_d, correct")
+      .eq("assessment_id", b.assessmentId).order("position");
+    if (!qs?.length) return fail("This test has no questions to copy", 400);
+    let copied = 0, skipped = 0;
+    for (const t of tgts ?? []) {
+      if (t.kind !== src.kind || t.subject_id !== src.subject_id || t.term_id !== src.term_id) { skipped++; continue; }
+      const { count: have } = await sb.from("questions").select("id", { count: "exact", head: true }).eq("assessment_id", t.id);
+      const { count: tried } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", t.id);
+      if ((have ?? 0) > 0 || (tried ?? 0) > 0) { skipped++; continue; }
+      const rows = qs.map((q) => ({ assessment_id: t.id, ...q }));
+      const { error } = await sb.from("questions").insert(rows);
+      if (error) return fail(error.message);
+      copied++;
+    }
+    return NextResponse.json({ ok: true, copied, skipped, questions: qs.length });
   }
 
   if (b.action === "pull") {

@@ -38,7 +38,7 @@ export default function AdminCbt() {
   const [terms, setTerms] = useState<Record<string, unknown>[] | null>(null);
   const [asms, setAsms] = useState<Asm[]>([]);
   const [msg, setMsg] = useState("");
-  const [f, setF] = useState({ termId: "", classIds: [] as string[], subjectId: "", kind: "test1", maxScore: "40", duration: "30", startAt: "", endAt: "", instructions: "" });
+  const [f, setF] = useState({ termId: "", classId: "", subjectId: "", kind: "test1", maxScore: "40", duration: "30", startAt: "", endAt: "", instructions: "" });
   const [sel, setSel] = useState("");
   const [qtext, setQtext] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
@@ -103,17 +103,6 @@ export default function AdminCbt() {
     catch (e) { setMsg((e as Error).message); }
   }
 
-  async function removeTest() {
-    if (!cur) return;
-    if (!confirm(`Delete this ${cur.kind === "exam" ? "exam" : "test"} for ${name(classes, cur.class_id)} (${name(subjects, cur.subject_id)}) and its questions? This cannot be undone.`)) return;
-    try {
-      await post({ action: "delete", assessmentId: sel });
-      setSel(""); setRows([]); setAlso(new Set());
-      await load();
-      setMsg("Deleted.");
-    } catch (e) { setMsg((e as Error).message); }
-  }
-
   async function copyQuestions() {
     if (!confirm("Copy this test's questions into the same test of the other classes? Classes that already have questions are skipped.")) return;
     try {
@@ -130,10 +119,7 @@ export default function AdminCbt() {
     catch (e) { setMsg((e as Error).message); }
   }
 
-  // Subjects that EVERY ticked class has
-  const classSubjects = f.classIds.length
-    ? subjects.filter((s) => f.classIds.every((cid) => links.some((l) => l.class_id === cid && l.subject_id === s.id)))
-    : [];
+  const classSubjects = subjects.filter((s) => links.some((l) => l.class_id === f.classId && l.subject_id === s.id));
   const cur = asms.find((a) => a.id === sel);
   // Other tests of the same kind, subject and term (the other classes' copies)
   const siblings = cur
@@ -164,21 +150,12 @@ export default function AdminCbt() {
           ) : (
             <input placeholder="Term ID (uuid from your terms table)" value={f.termId} onChange={(e) => setF({ ...f, termId: e.target.value })} />
           )}
-          <label style={labelStyle}>Classes (tick one or more; a separate test is made for each)</label>
-          <div style={{ marginBottom: 8 }}>
-            {classes.map((c) => (
-              <label key={c.id} style={{ display: "inline-block", marginRight: 14, marginBottom: 4 }}>
-                <input type="checkbox" style={{ width: "auto", marginRight: 6 }} checked={f.classIds.includes(c.id)}
-                  onChange={() => {
-                    const next = f.classIds.includes(c.id) ? f.classIds.filter((x) => x !== c.id) : [...f.classIds, c.id];
-                    setF({ ...f, classIds: next, subjectId: "" });
-                  }} />
-                {c.name}
-              </label>
-            ))}
-          </div>
+          <select value={f.classId} onChange={(e) => setF({ ...f, classId: e.target.value, subjectId: "" })}>
+            <option value="">Select class</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <select value={f.subjectId} onChange={(e) => setF({ ...f, subjectId: e.target.value })}>
-            <option value="">{!f.classIds.length ? "Select class first" : classSubjects.length ? "Select subject" : "No subject is common to all ticked classes"}</option>
+            <option value="">{!f.classId ? "Select class first" : classSubjects.length ? "Select subject" : "No subjects set for this class"}</option>
             {classSubjects.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value, maxScore: e.target.value === "exam" ? "60" : "40" })}><option value="test1">Test</option><option value="exam">Exam (60 marks)</option></select>
@@ -200,9 +177,7 @@ export default function AdminCbt() {
             </div>
           </div>
           <textarea rows={2} placeholder="Instructions shown to students (optional)" value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} />
-          <button disabled={!f.termId || !f.classIds.length || !f.subjectId} onClick={create}>
-            {f.classIds.length > 1 ? `Create ${f.classIds.length} tests` : "Create"}
-          </button>
+          <button disabled={!f.termId || !f.classId || !f.subjectId} onClick={create}>Create</button>
           {msg && <p className="adm-msg">{msg}</p>}
 
           <h2>2. Manage</h2>
@@ -217,7 +192,6 @@ export default function AdminCbt() {
                 <button onClick={() => publish(!cur?.is_published)}>{cur?.is_published ? "Unpublish" : "Publish"}</button>
                 <button onClick={loadResults}>View results</button>
                 <button onClick={finalize}>Finalize overdue</button>
-                <button onClick={removeTest}>Delete this test</button>
               </div>
               {siblings.length > 0 && (
                 <>
