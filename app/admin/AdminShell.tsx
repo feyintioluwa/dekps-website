@@ -12,6 +12,7 @@ const NAV = [
   ["/admin", "📊", "Dashboard"],
   ["/admin/students", "👩‍🎓", "Students & PINs"],
   ["/admin/electives", "🧪", "SSS Subjects"],
+  ["/admin/subjects", "📚", "Class Subjects"],
   ["/admin/broadsheet", "📑", "Scores & Results"],
   ["/admin/cbt", "📝", "Tests & Exams"],
   ["/admin/terms", "📅", "Terms & Sessions"],
