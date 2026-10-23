@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import "./results.css";
 import "./extra.css";
+import Link from "next/link";
 
 type Subject = {
   subject: string;
@@ -196,9 +197,10 @@ export default function ResultsPage() {
             </div>
           </div>
 
-          <div className="portal-title">
+                    <div className="portal-title">
             <span>STUDENT</span>
             <strong>RESULT PORTAL</strong>
+            <Link href="/" style={{ display: "block", marginTop: 4, fontSize: ".85rem", color: "inherit", textDecoration: "underline" }}>Home</Link>
           </div>
         </div>
       </header>
