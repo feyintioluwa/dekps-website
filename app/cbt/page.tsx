@@ -221,8 +221,7 @@ export default function CbtPage() {
         {result && (
           <div className="cbt-card" style={{ textAlign: "center" }}>
             <h2>Submitted</h2>
-            <div className="cbt-big">{result.score} / {result.max}</div>
-            <p>{result.correct} of {result.total} questions correct</p>
+            <p>Your answers have been received. Your teacher will give you your result.</p>
           </div>
         )}
         {msg && <div className="cbt-err">{msg}</div>}
@@ -231,7 +230,7 @@ export default function CbtPage() {
         {items.map((it) => (
           <div className="cbt-card cbt-item" key={it.id}>
             <div>
-              <span className="cbt-tag">{it.kind}</span>
+              <span className="cbt-tag">{it.kind === "exam" ? "Exam" : "Test"}</span>
               <h3 style={{ marginTop: 6 }}>{it.subject}</h3>
               <small style={{ color: "#687385" }}>
                 {it.duration ? `${it.duration} min · ` : ""}{it.maxScore} marks
@@ -239,7 +238,7 @@ export default function CbtPage() {
               </small>
             </div>
             <div style={{ textAlign: "right" }}>
-              {it.state === "submitted" && <b>Score: {it.score}/{it.maxScore}</b>}
+              {it.state === "submitted" && <b>Submitted</b>}
               {it.state === "open" && <button className="cbt-btn" disabled={busy} onClick={() => start(it.id)}>Start</button>}
               {it.state === "in_progress" && <button className="cbt-btn" disabled={busy} onClick={() => start(it.id)}>Resume</button>}
               {it.state === "upcoming" && <small>Opens {fmt(it.start)}</small>}

@@ -6,6 +6,7 @@ import { useAdminKey } from "../AdminShell";
 
 type Opt = { id: string; name: string };
 type Asm = { id: string; kind: string; class_id: string; subject_id: string; max_score: number; duration_minutes: number; start_at: string | null; end_at: string | null; is_published: boolean };
+type Link = { class_id: string; subject_id: string };
 type Q = { question: string; a: string; b: string; c: string; d: string; correct: string };
 type Row = { id: string; name: string; loginId: string; submitted_at: string | null; score: number | null };
 
@@ -33,10 +34,11 @@ export default function AdminCbt() {
   const key = useAdminKey();
   const [classes, setClasses] = useState<Opt[]>([]);
   const [subjects, setSubjects] = useState<Opt[]>([]);
+  const [links, setLinks] = useState<Link[]>([]);
   const [terms, setTerms] = useState<Record<string, unknown>[] | null>(null);
   const [asms, setAsms] = useState<Asm[]>([]);
   const [msg, setMsg] = useState("");
-  const [f, setF] = useState({ termId: "", classId: "", subjectId: "", kind: "test", maxScore: "20", duration: "30", startAt: "", endAt: "", instructions: "" });
+  const [f, setF] = useState({ termId: "", classId: "", subjectId: "", kind: "test1", maxScore: "40", duration: "30", startAt: "", endAt: "", instructions: "" });
   const [sel, setSel] = useState("");
   const [qtext, setQtext] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
@@ -52,19 +54,19 @@ export default function AdminCbt() {
   const name = (list: Opt[], id: string) => list.find((x) => x.id === id)?.name ?? "?";
 
   async function load() {
-    setMsg("");
     const r = await fetch("/api/admin/cbt", { headers: h });
     const d = await r.json();
     if (!r.ok) return setMsg(d.error || "Failed");
-    setClasses(d.classes); setSubjects(d.subjects); setTerms(d.terms); setAsms(d.assessments);
-    setF((p) => ({ ...p, classId: p.classId || d.classes[0]?.id || "", subjectId: p.subjectId || d.subjects[0]?.id || "" }));
+    setClasses(d.classes); setSubjects(d.subjects); setLinks(d.classSubjects ?? []); setTerms(d.terms); setAsms(d.assessments);
   }
 
   async function create() {
     try {
+      setMsg("Creating...");
       const d = await post({ action: "create", ...f });
-      setMsg("Created. Now select it below and add questions."); await load(); setSel(d.id);
-    } catch (e) { setMsg((e as Error).message); }
+      await load(); setSel(d.id);
+      setMsg("Created. Now add questions below.");
+    } catch (e) { setMsg("Could not create: " + (e as Error).message); }
   }
   async function addQuestions() {
     const { qs, errors } = parse(qtext);
@@ -94,12 +96,15 @@ export default function AdminCbt() {
       setMsg(`${d.added} questions pulled into this exam (${d.available} were available).`); loadResults(); }
     catch (e) { setMsg((e as Error).message); }
   }
+  const classSubjects = subjects.filter((s) => links.some((l) => l.class_id === f.classId && l.subject_id === s.id));
   const cur = asms.find((a) => a.id === sel);
   const termLabel = (t: Record<string, unknown>) =>
     t.term && t.session ? `${t.term} — ${t.session}` : String(t.name ?? t.term ?? t.label ?? t.id);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
+
+  const labelStyle = { display: "block", fontSize: ".85rem", color: "#687385", marginBottom: 4 } as const;
 
   return (
     <div className="adm">
@@ -118,25 +123,33 @@ export default function AdminCbt() {
           ) : (
             <input placeholder="Term ID (uuid from your terms table)" value={f.termId} onChange={(e) => setF({ ...f, termId: e.target.value })} />
           )}
-          <select value={f.classId} onChange={(e) => setF({ ...f, classId: e.target.value })}>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select value={f.subjectId} onChange={(e) => setF({ ...f, subjectId: e.target.value })}>{subjects.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}><option value="test">Test</option><option value="exam">Exam</option></select>
+          <select value={f.classId} onChange={(e) => setF({ ...f, classId: e.target.value, subjectId: "" })}>
+            <option value="">Select class</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={f.subjectId} onChange={(e) => setF({ ...f, subjectId: e.target.value })}>
+            <option value="">{!f.classId ? "Select class first" : classSubjects.length ? "Select subject" : "No subjects set for this class"}</option>
+            {classSubjects.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value, maxScore: e.target.value === "exam" ? "60" : "40" })}><option value="test1">Test (40 marks)</option><option value="exam">Exam (60 marks)</option></select>
           <div className="adm-row">
-            <input placeholder="Max score" value={f.maxScore} onChange={(e) => setF({ ...f, maxScore: e.target.value })} />
-            <input placeholder="Minutes" value={f.duration} onChange={(e) => setF({ ...f, duration: e.target.value })} />
-          </div>
-          <p>Opens / closes (optional)</p>
-          <div className="adm-row">
-            <input type="datetime-local" value={f.startAt} onChange={(e) => setF({ ...f, startAt: e.target.value ? new Date(e.target.value).toISOString() : "" })} />
-            <input type="datetime-local" value={f.endAt} onChange={(e) => setF({ ...f, endAt: e.target.value ? new Date(e.target.value).toISOString() : "" })} />
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Maximum score (set by Test / Exam)</label>
+              <input value={f.maxScore} readOnly />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Time allowed (minutes)</label>
+              <input value={f.duration} onChange={(e) => setF({ ...f, duration: e.target.value })} />
+            </div>
           </div>
           <textarea rows={2} placeholder="Instructions shown to students (optional)" value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} />
-          <button disabled={!f.termId} onClick={create}>Create</button>
+          <button disabled={!f.termId || !f.classId || !f.subjectId} onClick={create}>Create</button>
+          {msg && <p className="adm-msg">{msg}</p>}
 
           <h2>2. Manage</h2>
           <select value={sel} onChange={(e) => { setSel(e.target.value); setRows([]); }}>
             <option value="">Select a test/exam</option>
-            {asms.map((a) => <option key={a.id} value={a.id}>{a.kind} · {name(classes, a.class_id)} · {name(subjects, a.subject_id)} {a.is_published ? "(published)" : "(draft)"}</option>)}
+            {asms.map((a) => <option key={a.id} value={a.id}>{a.kind === "exam" ? "Exam" : "Test"} · {name(classes, a.class_id)} · {name(subjects, a.subject_id)} {a.is_published ? "(published)" : "(draft)"}</option>)}
           </select>
 
           {sel && (
@@ -155,7 +168,7 @@ export default function AdminCbt() {
                 <>
                   <h3>Build exam from tests (question bank)</h3>
                   <p style={{ fontSize: ".85rem", color: "#687385" }}>Tick source tests, choose how many random questions to pull. Duplicates are skipped.</p>
-                  {asms.filter((a) => a.kind === "test" && a.subject_id === cur.subject_id).map((a) => (
+                  {asms.filter((a) => a.kind === "test1" && a.subject_id === cur.subject_id).map((a) => (
                     <label key={a.id} style={{ display: "block" }}>
                       <input type="checkbox" style={{ width: "auto", marginRight: 8 }} checked={srcSel.has(a.id)}
                         onChange={() => { const n = new Set(srcSel); n.has(a.id) ? n.delete(a.id) : n.add(a.id); setSrcSel(n); }} />

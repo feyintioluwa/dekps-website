@@ -9,15 +9,17 @@ export async function GET(request: Request) {
   const c = client(request);
   if ("error" in c) return NextResponse.json({ error: c.error }, { status: c.status });
   const { sb } = c;
-  const [classes, subjects, terms, assessments] = await Promise.all([
+  const [classes, subjects, terms, assessments, classSubjects] = await Promise.all([
     sb.from("classes").select("id, name").order("sort_order"),
     sb.from("subjects").select("id, name").order("name"),
     sb.from("terms").select("*"),
     sb.from("assessments").select("id, kind, class_id, subject_id, term_id, max_score, duration_minutes, start_at, end_at, is_published, created_at").order("created_at", { ascending: false }).limit(60),
+    sb.from("class_subjects").select("class_id, subject_id"),
   ]);
   return NextResponse.json({
     classes: classes.data ?? [],
     subjects: subjects.data ?? [],
+    classSubjects: classSubjects.data ?? [],
     terms: terms.error ? null : terms.data,
     assessments: assessments.data ?? [],
   });
@@ -34,9 +36,9 @@ export async function POST(request: Request) {
   if (b.action === "create") {
     const row = {
       term_id: b.termId, class_id: b.classId, subject_id: b.subjectId,
-      kind: b.kind === "exam" ? "exam" : "test",
+      kind: b.kind === "exam" ? "exam" : "test1",
       mode: "cbt",
-      max_score: Number(b.maxScore),
+      max_score: b.kind === "exam" ? 60 : 40,
       duration_minutes: Number(b.duration),
       start_at: b.startAt || null, end_at: b.endAt || null,
       opens_at: b.startAt || null, closes_at: b.endAt || null,
