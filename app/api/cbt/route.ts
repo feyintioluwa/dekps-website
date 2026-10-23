@@ -109,6 +109,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, copied, skipped, questions: qs.length });
   }
 
+  if (b.action === "delete") {
+    const id = b.assessmentId as string;
+    if (!id) return fail("Choose a test", 400);
+    const { count: tried } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", id);
+    if ((tried ?? 0) > 0) return fail("Students have already attempted this, so it cannot be deleted. Unpublish it instead.", 400);
+    const { data: qrows } = await sb.from("questions").select("id").eq("assessment_id", id);
+    const qids = (qrows ?? []).map((q) => q.id);
+    if (qids.length) {
+      const { count: used } = await sb.from("exam_questions").select("question_id", { count: "exact", head: true }).in("question_id", qids).neq("exam_id", id);
+      if ((used ?? 0) > 0) return fail("Some of its questions are used in an exam, so it cannot be deleted.", 400);
+    }
+    const r1 = await sb.from("exam_questions").delete().eq("exam_id", id);
+    if (r1.error) return fail(r1.error.message);
+    const r2 = await sb.from("questions").delete().eq("assessment_id", id);
+    if (r2.error) return fail(r2.error.message);
+    const r3 = await sb.from("assessments").delete().eq("id", id);
+    if (r3.error) return fail(r3.error.message);
+    return NextResponse.json({ ok: true });
+  }
+
   if (b.action === "pull") {
     const sources = (b.sourceIds ?? []) as string[];
     const count = Math.max(1, Number(b.count) || 10);

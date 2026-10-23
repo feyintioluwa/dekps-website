@@ -103,6 +103,17 @@ export default function AdminCbt() {
     catch (e) { setMsg((e as Error).message); }
   }
 
+  async function removeTest() {
+    if (!cur) return;
+    if (!confirm(`Delete this ${cur.kind === "exam" ? "exam" : "test"} for ${name(classes, cur.class_id)} (${name(subjects, cur.subject_id)}) and its questions? This cannot be undone.`)) return;
+    try {
+      await post({ action: "delete", assessmentId: sel });
+      setSel(""); setRows([]); setAlso(new Set());
+      await load();
+      setMsg("Deleted.");
+    } catch (e) { setMsg((e as Error).message); }
+  }
+
   async function copyQuestions() {
     if (!confirm("Copy this test's questions into the same test of the other classes? Classes that already have questions are skipped.")) return;
     try {
@@ -206,6 +217,7 @@ export default function AdminCbt() {
                 <button onClick={() => publish(!cur?.is_published)}>{cur?.is_published ? "Unpublish" : "Publish"}</button>
                 <button onClick={loadResults}>View results</button>
                 <button onClick={finalize}>Finalize overdue</button>
+                <button onClick={removeTest}>Delete this test</button>
               </div>
               {siblings.length > 0 && (
                 <>
