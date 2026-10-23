@@ -69,5 +69,12 @@ export async function POST(request: Request) {
     if (error) return fail(error.message);
     return NextResponse.json({ ok: true, published: data });
   }
+
+  if (b.action === "remarks") {
+    const { data, error } = await sb.rpc("admin_fill_remarks", { p_term: b.termId, p_class: b.classId });
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true, filled: data });
+  }
+
   return fail("Unknown action", 400);
 }

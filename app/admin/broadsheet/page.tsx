@@ -216,6 +216,19 @@ export default function Broadsheet() {
     } catch (e) { setMsg((e as Error).message); }
     setBusy(false);
   }
+  async function fillRemarks() {
+    if (!termId) return setMsg("Choose the term first.");
+    setBusy(true);
+    try {
+      const lines: string[] = [];
+      for (const c of targets()) {
+        const d = await post(c.id, { action: "remarks" });
+        lines.push(`${c.name}: ${d.filled}`);
+      }
+      setMsg(`Remarks filled (students per class) — ${lines.join(", ")}. Remarks already written were kept.`);
+    } catch (e) { setMsg((e as Error).message); }
+    setBusy(false);
+  }
   async function publish() {
     if (!termId) return setMsg("Choose the term first.");
     if (!confirm(classId === "all" ? "Publish results for ALL classes?" : "Publish results for this class?")) return;
@@ -254,7 +267,10 @@ export default function Broadsheet() {
           <h2>2. Upload filled file</h2>
           <input type="file" accept=".xlsx,.xls" onChange={onFile} disabled={busy} />
           <button disabled={!pending.length || busy} onClick={save}>Save scores</button>
-          <h2>3. Publish to portal</h2>
+          <h2>3. Fill remarks</h2>
+          <button disabled={busy} onClick={fillRemarks}>{classId === "all" ? "Fill remarks for all classes" : "Fill remarks for this class"}</button>
+          <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>Do this after Save scores and before Publish. Remarks are chosen from each student&apos;s average. A remark already written is never replaced.</p>
+          <h2>4. Publish to portal</h2>
           <div className="adm-row"><input value={termLabel} onChange={(e) => setTermLabel(e.target.value)} placeholder="Term name e.g. First Term" /><input value={session} onChange={(e) => setSession(e.target.value)} placeholder="Session" /></div>
           <button disabled={busy} onClick={publish}>{classId === "all" ? "Publish all classes" : "Publish this class"}</button>
           <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>Totals, average and grade are computed from CA + Exam. Students with no scores are skipped. Re-publishing updates existing results.</p>
