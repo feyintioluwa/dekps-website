@@ -200,7 +200,7 @@ export default function ResultsPage() {
                     <div className="portal-title">
             <span>STUDENT</span>
             <strong>RESULT PORTAL</strong>
-            <Link href="/" style={{ display: "block", marginTop: 4, fontSize: ".85rem", color: "inherit", textDecoration: "underline" }}>Home</Link>
+                        <Link href="/" className="home-btn" style={{ marginTop: 8 }}>← Home</Link>
           </div>
         </div>
       </header>

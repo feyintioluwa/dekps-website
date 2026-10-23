@@ -139,7 +139,7 @@ export default function CbtPage() {
   const header = (
     <div className="cbt-top">
       <h1>DE KINGS PERFECTION PRIVATE SCHOOL — TESTS &amp; EXAMS</h1>
-            {me ? <span>{me.name} · {me.className}</span> : <Link href="/" style={{ color: "#fff", textDecoration: "underline" }}>Home</Link>}
+                  {me ? <span>{me.name} · {me.className}</span> : <Link href="/" className="home-btn">← Home</Link>}
     </div>
   );
 

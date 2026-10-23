@@ -1,3 +1,25 @@
 body {
   margin: 0;
 }
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #d6a94a;
+  border: 1px solid #d6a94a;
+  color: #071f3d;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.home-btn:hover {
+  background: #e4bd68;
+}
+.home-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
