@@ -23,3 +23,11 @@ body {
   outline: 2px solid #fff;
   outline-offset: 2px;
 }
+input,
+select,
+textarea,
+button {
+  box-sizing: border-box;
+  max-width: 100%;
+  font-family: inherit;
+}
