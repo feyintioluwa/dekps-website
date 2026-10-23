@@ -71,6 +71,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, added: qs.length, tests: targets.length });
   }
 
+  if (b.action === "copy") {
+    // Copy the questions of one test into the same test of other classes.
+    // Targets that already have questions, or that students have started, are skipped.
+    const targetIds = ((b.targetIds ?? []) as string[]).filter((x) => x && x !== b.assessmentId);
+    if (!b.assessmentId || !targetIds.length) return fail("Nothing to copy to", 400);
+    const { data: src } = await sb.from("assessments").select("id, kind, subject_id, term_id").eq("id", b.assessmentId).single();
+    const { data: tgts } = await sb.from("assessments").select("id, kind, subject_id, term_id").in("id", targetIds);
+    if (!src) return fail("Test not found", 404);
+    const { data: qs } = await sb.from("questions")
+      .select("position, question, option_a, option_b, option_c, option_d, correct")
+      .eq("assessment_id", b.assessmentId).order("position");
+    if (!qs?.length) return fail("This test has no questions to copy", 400);
+    let copied = 0, skipped = 0;
+    for (const t of tgts ?? []) {
+      if (t.kind !== src.kind || t.subject_id !== src.subject_id || t.term_id !== src.term_id) { skipped++; continue; }
+      const { count: have } = await sb.from("questions").select("id", { count: "exact", head: true }).eq("assessment_id", t.id);
+      const { count: tried } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", t.id);
+      if ((have ?? 0) > 0 || (tried ?? 0) > 0) { skipped++; continue; }
+      const rows = qs.map((q) => ({ assessment_id: t.id, ...q }));
+      const { error } = await sb.from("questions").insert(rows);
+      if (error) return fail(error.message);
+      copied++;
+    }
+    return NextResponse.json({ ok: true, copied, skipped, questions: qs.length });
+  }
+
   if (b.action === "pull") {
     const sources = (b.sourceIds ?? []) as string[];
     const count = Math.max(1, Number(b.count) || 10);

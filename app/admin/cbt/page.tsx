@@ -95,6 +95,14 @@ export default function AdminCbt() {
     catch (e) { setMsg((e as Error).message); }
   }
 
+  async function copyQuestions() {
+    if (!confirm("Copy this test's questions into the same test of the other classes? Classes that already have questions are skipped.")) return;
+    try {
+      const d = await post({ action: "copy", assessmentId: sel, targetIds: siblings.map((a) => a.id) });
+      setMsg(`${d.questions} questions copied into ${d.copied} class${d.copied === 1 ? "" : "es"}.${d.skipped ? ` ${d.skipped} skipped (already had questions or students had started).` : ""}`);
+    } catch (e) { setMsg((e as Error).message); }
+  }
+
   const [srcSel, setSrcSel] = useState<Set<string>>(new Set());
   const [pullN, setPullN] = useState("20");
   async function pull() {
@@ -191,6 +199,16 @@ export default function AdminCbt() {
                 <button onClick={loadResults}>View results</button>
                 <button onClick={finalize}>Finalize overdue</button>
               </div>
+              {siblings.length > 0 && (
+                <>
+                  <h3>Same questions for other classes</h3>
+                  <p style={{ fontSize: ".85rem", color: "#687385" }}>
+                    This same {cur?.kind === "exam" ? "exam" : "test"} also exists for: {siblings.map((a) => name(classes, a.class_id)).join(", ")}.
+                    Add the questions to ONE class first, then press the button to copy them to the others. Classes that already have questions are skipped.
+                  </p>
+                  <button onClick={copyQuestions}>Copy these questions to the other classes</button>
+                </>
+              )}
               <h3>Add questions</h3>
               <p style={{ fontSize: ".85rem", color: "#687385" }}>One block per question, blank line between blocks:<br />What is 2+2?<br />A) 3<br />B) 4<br />C) 5<br />D) 6<br />Answer: B</p>
               <textarea rows={12} value={qtext} onChange={(e) => setQtext(e.target.value)} />
