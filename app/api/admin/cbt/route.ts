@@ -53,6 +53,31 @@ export async function POST(request: Request) {
   if (!b) return NextResponse.json({ error: "Bad request" }, { status: 400 });
   const fail = (m: string, s = 500) => NextResponse.json({ error: m }, { status: s });
 
+  if (b.action === "createMany") {
+    const classIds = ((b.classIds ?? []) as string[]).map(String);
+    if (!b.termId || !b.subjectId || !classIds.length) return fail("Choose a term, at least one class and a subject", 400);
+    const { data: lk } = await sb.from("class_subjects").select("class_id").eq("subject_id", b.subjectId).in("class_id", classIds);
+    const ok = new Set((lk ?? []).map((r) => String(r.class_id)));
+    const good = classIds.filter((id) => ok.has(id));
+    const bad = classIds.filter((id) => !ok.has(id));
+    if (!good.length) return fail("None of the ticked classes take that subject", 400);
+    const rows = good.map((class_id) => ({
+      term_id: b.termId, class_id, subject_id: b.subjectId,
+      kind: b.kind === "exam" ? "exam" : "test1",
+      mode: "cbt",
+      max_score: b.kind === "exam" ? 60 : Number(b.maxScore) === 20 ? 20 : 40,
+      duration_minutes: Number(b.duration),
+      start_at: b.startAt || null, end_at: b.endAt || null,
+      opens_at: b.startAt || null, closes_at: b.endAt || null,
+      instructions: b.instructions || null,
+      is_published: false,
+    }));
+    const { data, error } = await sb.from("assessments").insert(rows).select("id");
+    if (error) return fail(error.message);
+    const { data: cl } = bad.length ? await sb.from("classes").select("id, name").in("id", bad) : { data: [] as { id: string; name: string }[] };
+    return NextResponse.json({ ok: true, ids: (data ?? []).map((r) => r.id), skipped: (cl ?? []).map((c) => c.name) });
+  }
+
   if (b.action === "create") {
     const row = {
       term_id: b.termId, class_id: b.classId, subject_id: b.subjectId,
@@ -73,15 +98,25 @@ export async function POST(request: Request) {
   if (b.action === "questions") {
     const qs = (b.questions ?? []) as { question: string; a: string; b: string; c: string; d: string; correct: string }[];
     if (!b.assessmentId || !qs.length) return fail("Nothing to add", 400);
-    const { data: last } = await sb.from("questions").select("position").eq("assessment_id", b.assessmentId).order("position", { ascending: false }).limit(1);
-    let pos = last?.[0]?.position ?? 0;
-    const rows = qs.map((q) => ({
-      assessment_id: b.assessmentId, position: ++pos, question: q.question,
-      option_a: q.a, option_b: q.b, option_c: q.c, option_d: q.d, correct: q.correct,
-    }));
-    const { error } = await sb.from("questions").insert(rows);
-    if (error) return fail(error.message);
-    return NextResponse.json({ ok: true, added: rows.length });
+    const targets = [...new Set([String(b.assessmentId), ...((b.alsoIds ?? []) as string[]).map(String)])];
+    let tests = 0;
+    const skipped: string[] = [];
+    for (const id of targets) {
+      if (id !== String(b.assessmentId)) {
+        const { count: tries } = await sb.from("attempts").select("id", { count: "exact", head: true }).eq("assessment_id", id);
+        if (tries) { skipped.push(id); continue; }
+      }
+      const { data: last } = await sb.from("questions").select("position").eq("assessment_id", id).order("position", { ascending: false }).limit(1);
+      let pos = last?.[0]?.position ?? 0;
+      const rows = qs.map((q) => ({
+        assessment_id: id, position: ++pos, question: q.question,
+        option_a: q.a, option_b: q.b, option_c: q.c, option_d: q.d, correct: q.correct,
+      }));
+      const { error } = await sb.from("questions").insert(rows);
+      if (error) return fail(error.message);
+      tests++;
+    }
+    return NextResponse.json({ ok: true, added: qs.length, tests, skipped: skipped.length });
   }
 
   if (b.action === "pull") {
@@ -229,7 +264,8 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true, deleted, skipped });
   }
-    if (b.action === "deleteAll") {
+
+  if (b.action === "deleteAll") {
     const id = String(b.assessmentId ?? "");
     if (!id) return fail("Missing test", 400);
     const { data: a } = await sb.from("assessments").select("id, is_published").eq("id", id).maybeSingle();
@@ -242,5 +278,6 @@ export async function POST(request: Request) {
     if (error) return fail(error.message);
     return NextResponse.json({ ok: true });
   }
+
   return fail("Unknown action", 400);
 }

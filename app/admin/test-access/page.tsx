@@ -2,6 +2,7 @@
 
 import { CSSProperties, useCallback, useEffect, useState } from "react";
 import { useAdminKey } from "../AdminShell";
+import { useConfirm } from "../Dialog";
 
 type Row = { id: string; name: string; isOpen: boolean; code: string | null; openedAt: string | null };
 
@@ -19,6 +20,7 @@ const copyBtn: CSSProperties = {
 
 export default function TestAccessPage() {
   const key = useAdminKey();
+  const ask = useConfirm();
   const [rows, setRows] = useState<Row[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
@@ -112,7 +114,13 @@ export default function TestAccessPage() {
                 </button>
                 <button
                   style={lockBtn} disabled={busy === r.id}
-                  onClick={() => { if (confirm(`Lock ${r.name}? The code will stop working.`)) set(r.id, false); }}
+                  onClick={async () => {
+                    if (await ask({
+                      title: `Lock ${r.name}?`,
+                      message: "The code will stop working. Students already in a test can still finish.",
+                      confirmText: "Lock class", danger: true,
+                    })) set(r.id, false);
+                  }}
                 >
                   Lock class
                 </button>

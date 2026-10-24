@@ -39,7 +39,9 @@ export default function AdminCbt() {
   const [terms, setTerms] = useState<Record<string, unknown>[] | null>(null);
   const [asms, setAsms] = useState<Asm[]>([]);
   const [msg, setMsg] = useState("");
-  const [f, setF] = useState({ termId: "", classId: "", subjectId: "", kind: "test1", maxScore: "40", duration: "30", startAt: "", endAt: "", instructions: "" });
+  const [f, setF] = useState({ termId: "", subjectId: "", kind: "test1", maxScore: "40", duration: "30", startAt: "", endAt: "", instructions: "" });
+  const [classIds, setClassIds] = useState<string[]>([]);
+  const [alsoSel, setAlsoSel] = useState<Set<string>>(new Set());
   const [sel, setSel] = useState("");
   const [qtext, setQtext] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
@@ -67,12 +69,22 @@ export default function AdminCbt() {
     setClasses(d.classes); setSubjects(d.subjects); setLinks(d.classSubjects ?? []); setTerms(d.terms); setAsms(d.assessments);
   }
 
+  function toggleClass(id: string) {
+    setClassIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setF((p) => ({ ...p, subjectId: "" }));
+  }
+
   async function create() {
     try {
       setMsg("Creating...");
-      const d = await post({ action: "create", ...f });
-      await load(); selectAsm(d.id, f.duration, f.instructions);
-      setMsg("Created. Now add questions below.");
+      const d = await post({ action: "createMany", ...f, classIds });
+      await load();
+      selectAsm(d.ids[0], f.duration, f.instructions);
+      setAlsoSel(new Set<string>(d.ids.slice(1)));
+      setMsg(
+        `Created for ${d.ids.length} class(es). Now add questions below.` +
+        (d.skipped?.length ? ` Skipped (they do not take this subject): ${d.skipped.join(", ")}.` : "")
+      );
     } catch (e) { setMsg("Could not create: " + (e as Error).message); }
   }
   async function addQuestions() {
@@ -81,8 +93,9 @@ export default function AdminCbt() {
     if (busy) return;
     setBusy(true);
     try {
-      const d = await post({ action: "questions", assessmentId: sel, questions: qs });
-      setMsg(`${d.added} questions added.`); setQtext(""); loadResults(); loadQuestions();
+      const d = await post({ action: "questions", assessmentId: sel, alsoIds: [...alsoSel], questions: qs });
+      setMsg(`${d.added} questions added to ${d.tests} test(s).` + (d.skipped ? ` ${d.skipped} skipped because students already started.` : ""));
+      setQtext(""); loadResults(); loadQuestions();
     } catch (e) { setMsg((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -106,7 +119,7 @@ export default function AdminCbt() {
   }
   function selectAsm(id: string, dur?: string, instr?: string) {
     const a = asms.find((x) => x.id === id);
-    setSel(id); setRows([]); setQlist([]); setEditQ(null);
+    setSel(id); setRows([]); setQlist([]); setEditQ(null); setAlsoSel(new Set());
     setEditDur(dur ?? String(a?.duration_minutes ?? ""));
     setEditInstr(instr ?? a?.instructions ?? "");
     if (id) loadQuestions(id);
@@ -124,8 +137,10 @@ export default function AdminCbt() {
     await post({ action: "deleteAssessment", assessmentId: sel });
     setSel(""); setQlist([]); setRows([]); await load(); setMsg("Deleted.");
   });
-    const deleteEverything = () => guard(async () => {
-    const typed = window.prompt(`This permanently deletes this ${cur?.kind === "exam" ? "exam" : "test"}, its questions, and ALL student attempts and answers. It cannot be undone.\n\nType DELETE to confirm.`);
+  const deleteEverything = () => guard(async () => {
+    const typed = window.prompt(
+      `This permanently deletes this ${cur?.kind === "exam" ? "exam" : "test"}, its questions, and ALL student attempts and answers. It cannot be undone.\n\nType DELETE to confirm.`
+    );
     if (typed === null) return;
     await post({ action: "deleteAll", assessmentId: sel, confirm: typed });
     setSel(""); setQlist([]); setRows([]); setEditQ(null);
@@ -166,8 +181,12 @@ export default function AdminCbt() {
       setMsg(`${d.added} questions pulled into this exam (${d.available} were available).`); loadResults(); loadQuestions(); }
     catch (e) { setMsg((e as Error).message); }
   }
-  const classSubjects = subjects.filter((s) => links.some((l) => l.class_id === f.classId && l.subject_id === s.id));
+
+  // Subjects taken by at least one ticked class (the server skips classes that don't take it)
+  const classSubjects = subjects.filter((s) => links.some((l) => classIds.includes(l.class_id) && l.subject_id === s.id));
   const cur = asms.find((a) => a.id === sel);
+  // Other drafts of the same subject and kind: questions can be added to them in one go
+  const siblings = cur ? asms.filter((a) => a.id !== sel && a.subject_id === cur.subject_id && a.kind === cur.kind && !a.is_published) : [];
   const termLabel = (t: Record<string, unknown>) =>
     t.term && t.session ? `${t.term} — ${t.session}` : String(t.name ?? t.term ?? t.label ?? t.id);
 
@@ -175,11 +194,12 @@ export default function AdminCbt() {
   useEffect(() => { load(); }, []);
 
   const labelStyle = { display: "block", fontSize: ".85rem", color: "#687385", marginBottom: 4 } as const;
+  const chk = { width: "auto", marginRight: 8 } as const;
 
   return (
     <div className="adm">
       <h1>Tests &amp; Exams (CBT) — Admin</h1>
-      
+
       {msg && <p className="adm-msg">{msg}</p>}
 
       {classes.length > 0 && (
@@ -193,12 +213,25 @@ export default function AdminCbt() {
           ) : (
             <input placeholder="Term ID (uuid from your terms table)" value={f.termId} onChange={(e) => setF({ ...f, termId: e.target.value })} />
           )}
-          <select value={f.classId} onChange={(e) => setF({ ...f, classId: e.target.value, subjectId: "" })}>
-            <option value="">Select class</option>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+
+          <label style={labelStyle}>Classes (tick one or more)</label>
+          <div style={{ border: "1px solid #dfe4ea", borderRadius: 10, padding: 12, marginBottom: 10 }}>
+            <div className="adm-row" style={{ marginBottom: 8 }}>
+              <button type="button" onClick={() => { setClassIds(classes.map((c) => c.id)); setF({ ...f, subjectId: "" }); }}>Select all</button>
+              <button type="button" onClick={() => { setClassIds([]); setF({ ...f, subjectId: "" }); }}>Clear</button>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
+              {classes.map((c) => (
+                <label key={c.id} style={{ display: "flex", alignItems: "center" }}>
+                  <input type="checkbox" style={chk} checked={classIds.includes(c.id)} onChange={() => toggleClass(c.id)} />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+          </div>
+
           <select value={f.subjectId} onChange={(e) => setF({ ...f, subjectId: e.target.value })}>
-            <option value="">{!f.classId ? "Select class first" : classSubjects.length ? "Select subject" : "No subjects set for this class"}</option>
+            <option value="">{!classIds.length ? "Tick a class first" : classSubjects.length ? "Select subject" : "No subjects set for these classes"}</option>
             {classSubjects.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value, maxScore: e.target.value === "exam" ? "60" : "40" })}><option value="test1">Test</option><option value="exam">Exam (60 marks)</option></select>
@@ -220,8 +253,9 @@ export default function AdminCbt() {
             </div>
           </div>
           <textarea rows={2} placeholder="Instructions shown to students (optional)" value={f.instructions} onChange={(e) => setF({ ...f, instructions: e.target.value })} />
-          <button disabled={!f.termId || !f.classId || !f.subjectId} onClick={create}>Create</button>
-          {msg && <p className="adm-msg">{msg}</p>}
+          <button disabled={!f.termId || !classIds.length || !f.subjectId} onClick={create}>
+            {classIds.length > 1 ? `Create for ${classIds.length} classes` : "Create"}
+          </button>
 
           <h2>2. Manage</h2>
           <select value={sel} onChange={(e) => selectAsm(e.target.value)}>
@@ -251,7 +285,18 @@ export default function AdminCbt() {
               <div className="adm-row">
                 <button disabled={busy} onClick={saveDetails}>Save details</button>
                 <button style={{ background: "#9e1824" }} disabled={busy} onClick={deleteTest}>Delete this {cur?.kind === "exam" ? "exam" : "test"}</button>
+                <button
+                  style={{ background: "#5c0f17" }}
+                  disabled={busy || !!cur?.is_published}
+                  title={cur?.is_published ? "Unpublish it first" : ""}
+                  onClick={deleteEverything}
+                >
+                  Delete with student work
+                </button>
               </div>
+              {cur?.is_published && (
+                <p style={{ fontSize: ".8rem", color: "#687385" }}>To delete with student work, unpublish it first.</p>
+              )}
 
               <h3>Questions ({qlist.length})</h3>
               {qlist.length === 0 && <p>No questions yet.</p>}
@@ -285,6 +330,24 @@ export default function AdminCbt() {
 
               <h3>Add questions</h3>
               <p style={{ fontSize: ".85rem", color: "#687385" }}>One block per question, blank line between blocks:<br />What is 2+2?<br />A) 3<br />B) 4<br />C) 5<br />D) 6<br />Answer: B</p>
+
+              {siblings.length > 0 && (
+                <div style={{ border: "1px solid #dfe4ea", borderRadius: 10, padding: 12, marginBottom: 10 }}>
+                  <p style={{ fontSize: ".85rem", color: "#687385", marginBottom: 6 }}>
+                    Also add these questions to the same {cur?.kind === "exam" ? "exam" : "test"} for:
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
+                    {siblings.map((a) => (
+                      <label key={a.id} style={{ display: "flex", alignItems: "center" }}>
+                        <input type="checkbox" style={chk} checked={alsoSel.has(a.id)}
+                          onChange={() => { const n = new Set(alsoSel); n.has(a.id) ? n.delete(a.id) : n.add(a.id); setAlsoSel(n); }} />
+                        {name(classes, a.class_id)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <textarea rows={12} value={qtext} onChange={(e) => setQtext(e.target.value)} />
               <button disabled={!qtext.trim() || busy} onClick={addQuestions}>{busy ? "Adding..." : "Add questions"}</button>
 
@@ -294,7 +357,7 @@ export default function AdminCbt() {
                   <p style={{ fontSize: ".85rem", color: "#687385" }}>Tick source tests, choose how many random questions to pull. Duplicates are skipped.</p>
                   {asms.filter((a) => a.kind === "test1" && a.subject_id === cur.subject_id).map((a) => (
                     <label key={a.id} style={{ display: "block" }}>
-                      <input type="checkbox" style={{ width: "auto", marginRight: 8 }} checked={srcSel.has(a.id)}
+                      <input type="checkbox" style={chk} checked={srcSel.has(a.id)}
                         onChange={() => { const n = new Set(srcSel); n.has(a.id) ? n.delete(a.id) : n.add(a.id); setSrcSel(n); }} />
                       {name(classes, a.class_id)} test
                     </label>

@@ -4,6 +4,7 @@ import { createContext, FormEvent, ReactNode, useContext, useEffect, useState } 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import "./shell.css";
+import { DialogProvider } from "./Dialog";
 
 const Ctx = createContext("");
 export const useAdminKey = () => useContext(Ctx);
@@ -90,30 +91,32 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={key}>
-      <div className="shell">
-        <aside className="shell-side">
-          <div className="shell-brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/kps-logo.png" alt="" />
-            <b>De Kings Perfection<small>ADMIN PORTAL</small></b>
+      <DialogProvider>
+        <div className="shell">
+          <aside className="shell-side">
+            <div className="shell-brand">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/kps-logo.png" alt="" />
+              <b>De Kings Perfection<small>ADMIN PORTAL</small></b>
+            </div>
+            <nav className="shell-nav">
+              {NAV.map(([href, icon, label]) => (
+                <Link key={href} href={href} className={path === href ? "on" : ""}>
+                  <span>{icon}</span>{label}
+                </Link>
+              ))}
+            </nav>
+            <div className="shell-foot">
+              <Link href="/">View website</Link>
+              <button onClick={logout}>Sign out</button>
+            </div>
+          </aside>
+          <div className="shell-main">
+            <div className="shell-top"><h1>{title}</h1><span>{current}</span></div>
+            <div className="shell-body">{children}</div>
           </div>
-          <nav className="shell-nav">
-            {NAV.map(([href, icon, label]) => (
-              <Link key={href} href={href} className={path === href ? "on" : ""}>
-                <span>{icon}</span>{label}
-              </Link>
-            ))}
-          </nav>
-          <div className="shell-foot">
-            <Link href="/">View website</Link>
-            <button onClick={logout}>Sign out</button>
-          </div>
-        </aside>
-        <div className="shell-main">
-          <div className="shell-top"><h1>{title}</h1><span>{current}</span></div>
-          <div className="shell-body">{children}</div>
         </div>
-      </div>
+      </DialogProvider>
     </Ctx.Provider>
   );
 }
