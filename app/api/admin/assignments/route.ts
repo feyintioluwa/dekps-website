@@ -59,18 +59,22 @@ export async function POST(request: Request) {
     const { data: studs } = await sb.from("students").select("id, name, login_id")
       .eq("class_id", a.class_id).eq("is_active", true).order("login_id");
     const { data: subs } = await sb.from("assignment_submissions")
-      .select("student_id, answer, submitted_at, score, comment").eq("assignment_id", b.assignmentId);
-    return NextResponse.json({
-      maxScore: a.max_score,
-      rows: (studs ?? []).map((s) => {
-        const x = (subs ?? []).find((y) => y.student_id === s.id);
-        return {
-          studentId: s.id, name: s.name, loginId: s.login_id,
-          answer: x?.answer ?? null, submittedAt: x?.submitted_at ?? null,
-          score: x?.score ?? null, comment: x?.comment ?? null,
-        };
-      }),
-    });
+      .select("student_id, answer, files, submitted_at, score, comment").eq("assignment_id", b.assignmentId);
+    const rows = await Promise.all((studs ?? []).map(async (s) => {
+      const x = (subs ?? []).find((y) => y.student_id === s.id);
+      const refs = ((x?.files ?? []) as { path: string; name: string; type: string }[]);
+      // Private files: give the admin a temporary link (1 hour) for each one
+      const files = await Promise.all(refs.map(async (f) => {
+        const { data: u } = await sb.storage.from("assignments").createSignedUrl(f.path, 3600);
+        return { name: f.name, type: f.type, url: u?.signedUrl ?? "" };
+      }));
+      return {
+        studentId: s.id, name: s.name, loginId: s.login_id,
+        answer: x?.answer ?? null, files, submittedAt: x?.submitted_at ?? null,
+        score: x?.score ?? null, comment: x?.comment ?? null,
+      };
+    }));
+    return NextResponse.json({ maxScore: a.max_score, rows });
   }
 
   if (b.action === "mark") {

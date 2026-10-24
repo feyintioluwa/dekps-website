@@ -12,6 +12,7 @@ type Asg = {
 };
 type Sub = {
   studentId: string; name: string; loginId: string; answer: string | null;
+  files: { name: string; type: string; url: string }[];
   submittedAt: string | null; score: number | null; comment: string | null;
 };
 
@@ -159,7 +160,16 @@ export default function AdminAssignments() {
                   </div>
                   {r.submittedAt && (
                     <>
-                      <p style={{ whiteSpace: "pre-wrap", background: "#f6f8fb", padding: 8, borderRadius: 6 }}>{r.answer || "(empty answer)"}</p>
+                      <p style={{ whiteSpace: "pre-wrap", background: "#f6f8fb", padding: 8, borderRadius: 6 }}>{r.answer || (r.files.length ? "(no typed answer)" : "(empty answer)")}</p>
+                      {r.files.length > 0 && (
+                        <div style={{ margin: "6px 0" }}>
+                          {r.files.map((fl, i) => (
+                            fl.url
+                              ? <a key={i} href={fl.url} target="_blank" rel="noreferrer" style={{ display: "block" }}>📎 {fl.name}</a>
+                              : <span key={i} style={{ display: "block" }}>📎 {fl.name} (link unavailable)</span>
+                          ))}
+                        </div>
+                      )}
                       <div className="adm-row">
                         <input placeholder={`Mark /${cur.max_score}`} style={{ maxWidth: 110 }}
                           value={edit[r.studentId]?.score ?? ""}
