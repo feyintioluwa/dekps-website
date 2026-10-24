@@ -1,6 +1,6 @@
 /* Shared admin page styling (used inside the admin shell) */
 .adm,.adm *,.stat-grid *,.tile-grid *{box-sizing:border-box}
-.adm{background:#fff;border:1px solid #dfe4ea;border-radius:14px;padding:26px;box-shadow:0 10px 30px rgba(7,31,61,.06);font-family:Poppins,Arial,sans-serif;color:#18212f;max-width:100%;min-width:0}
+.adm{background:#fff;border:1px solid #dfe4ea;border-radius:14px;padding:26px;box-shadow:0 10px 30px rgba(7,31,61,.06);font-family:Poppins,Arial,sans-serif;color:#18212f;max-width:100%;min-width:0;overflow-x:auto}
 .adm h1{font-size:1.25rem;color:#071f3d;margin:0 0 6px}
 .adm h2{font-size:1.02rem;color:#071f3d;margin:26px 0 12px;padding-left:12px;border-left:4px solid #d4ad58}
 .adm h3{font-size:.95rem;color:#071f3d;margin:18px 0 8px}

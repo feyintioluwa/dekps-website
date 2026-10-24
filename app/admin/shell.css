@@ -1,11 +1,12 @@
 :root{--navy:#071f3d;--navy2:#0c315d;--gold:#d4ad58;--bg:#f4f6f9;--line:#dfe4ea;--muted:#687385;--red:#9e1824}
 .shell,.shell *,.gate,.gate *{box-sizing:border-box}
-.shell{display:flex;min-height:100vh;background:var(--bg);font-family:Poppins,Arial,sans-serif;color:#18212f;overflow-x:hidden}
+.shell{display:flex;min-height:100vh;background:var(--bg);font-family:Poppins,Arial,sans-serif;color:#18212f;overflow-x:clip}
 .shell-side{width:250px;background:var(--navy);color:#fff;display:flex;flex-direction:column;border-right:4px solid var(--gold);position:sticky;top:0;height:100vh;flex-shrink:0}
 .shell-brand{display:flex;align-items:center;gap:10px;padding:20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
 .shell-brand img{width:42px;height:42px;object-fit:contain}
 .shell-brand b{font-size:.85rem;line-height:1.2;letter-spacing:.03em}
 .shell-brand small{display:block;color:#b7c6d7;font-weight:400;font-size:.7rem;letter-spacing:.12em}
+.shell-burger{display:none;margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:8px 14px;font-size:1.1rem;cursor:pointer}
 .shell-nav{padding:14px 10px;display:flex;flex-direction:column;gap:4px;flex:1}
 .shell-nav a{display:flex;align-items:center;gap:10px;color:#c9d6e4;text-decoration:none;padding:11px 12px;border-radius:8px;font-size:.92rem;font-weight:500}
 .shell-nav a:hover{background:rgba(255,255,255,.07);color:#fff}
@@ -28,12 +29,16 @@
 .gate .err{color:var(--red);font-weight:600;font-size:.88rem;margin-bottom:10px}
 @media(max-width:820px){
   .shell{flex-direction:column}
-  .shell-side{width:100%;height:auto;position:static;border-right:0;border-bottom:4px solid var(--gold)}
-  .shell-brand{padding:12px 16px}
-  .shell-nav{flex-direction:row;overflow-x:auto;padding:8px 10px}
-  .shell-nav a{white-space:nowrap;padding:9px 12px}
-  .shell-foot{flex-direction:row;padding:8px 10px}
+  .shell-side{width:100%;height:auto;position:sticky;top:0;z-index:20;border-right:0;border-bottom:4px solid var(--gold)}
+  .shell-brand{padding:10px 14px;gap:10px}
+  .shell-burger{display:block}
+  .shell-nav{display:none;flex-direction:column;overflow:visible;padding:8px 10px}
+  .shell-nav.open{display:flex}
+  .shell-nav a{padding:12px}
+  .shell-foot{display:none;flex-direction:row;padding:8px 10px}
+  .shell-foot.open{display:flex}
   .shell-foot a,.shell-foot button{flex:1}
-  .shell-top,.shell-body{padding-left:16px;padding-right:16px}
+  .shell-top{flex-wrap:wrap}
+  .shell-top,.shell-body{padding-left:14px;padding-right:14px}
 }
 @media print{.shell-side,.shell-top{display:none!important}.shell-body{padding:0;max-width:none}}

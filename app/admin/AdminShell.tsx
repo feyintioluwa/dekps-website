@@ -34,6 +34,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [current, setCurrent] = useState("");
+  const [menu, setMenu] = useState(false);
   const path = usePathname();
 
   useEffect(() => {
@@ -98,15 +99,16 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/kps-logo.png" alt="" />
               <b>De Kings Perfection<small>ADMIN PORTAL</small></b>
+              <button className="shell-burger" aria-label="Menu" onClick={() => setMenu((m) => !m)}>{menu ? "✕" : "☰"}</button>
             </div>
-            <nav className="shell-nav">
+            <nav className={"shell-nav" + (menu ? " open" : "")}>
               {NAV.map(([href, icon, label]) => (
-                <Link key={href} href={href} className={path === href ? "on" : ""}>
+                <Link key={href} href={href} className={path === href ? "on" : ""} onClick={() => setMenu(false)}>
                   <span>{icon}</span>{label}
                 </Link>
               ))}
             </nav>
-            <div className="shell-foot">
+            <div className={"shell-foot" + (menu ? " open" : "")}>
               <Link href="/">View website</Link>
               <button onClick={logout}>Sign out</button>
             </div>
