@@ -97,6 +97,21 @@ export async function POST(request: Request) {
     if (!data?.length) return fail("This student has not submitted yet", 400);
     return NextResponse.json({ ok: true });
   }
-
+    if (b.action === "delete") {
+    const id = String(b.assignmentId ?? "");
+    if (!id) return fail("Choose an assignment", 400);
+    const { data: a } = await sb.from("assignments").select("id, is_published").eq("id", id).maybeSingle();
+    if (!a) return fail("Assignment not found", 404);
+    if (a.is_published) return fail("Unpublish this assignment first, then delete it.", 400);
+    const { count, error: e1 } = await sb
+      .from("assignment_submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("assignment_id", id);
+    if (e1) return fail(e1.message);
+    if (count) return fail("Students have already submitted this assignment, so it cannot be deleted. Unpublish it instead.", 400);
+    const { error } = await sb.from("assignments").delete().eq("id", id);
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true });
+  }
   return fail("Unknown action", 400);
 }

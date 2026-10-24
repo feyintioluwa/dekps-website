@@ -69,6 +69,16 @@ export default function AdminAssignments() {
       load();
     } catch (e) { setMsg((e as Error).message); }
   }
+    async function remove() {
+    if (!cur) return;
+    if (!window.confirm(`Delete "${cur.title}"? This cannot be undone. It only works if no student has submitted.`)) return;
+    try {
+      await post({ action: "delete", assignmentId: sel });
+      setSel(""); setSubs([]);
+      setMsg("Assignment deleted.");
+      load();
+    } catch (e) { setMsg((e as Error).message); }
+  }
   async function loadSubs() {
     try {
       const d = await post({ action: "submissions", assignmentId: sel });
@@ -154,7 +164,7 @@ export default function AdminAssignments() {
               {cur.instructions && <p style={{ whiteSpace: "pre-wrap" }}>{cur.instructions}</p>}
               <div className="adm-row" style={{ margin: "8px 0" }}>
                 <button onClick={() => publish(!cur.is_published)}>{cur.is_published ? "Unpublish" : "Publish"}</button>
-                <button onClick={loadSubs}>View submissions &amp; mark</button>
+                <button disabled={cur.is_published} onClick={remove}>Delete</button>
               </div>
 
               {subs.length > 0 && subs.map((r) => (
