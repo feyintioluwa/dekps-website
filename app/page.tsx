@@ -1,7 +1,19 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import "./home.css";
 
 export default function Home() {
+  // The results button shows only when the current term has published results
+  const [resultsOpen, setResultsOpen] = useState(false);
+  useEffect(() => {
+    fetch("/api/home", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setResultsOpen(!!d?.resultsOpen))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="dkhome">
       <header className="dkhome-hero">
@@ -24,7 +36,7 @@ export default function Home() {
           <div className="dkhome-actions">
             <Link href="/cbt" className="dkhome-btn primary">Take test or exam</Link>
             <Link href="/assignments" className="dkhome-btn ghost">Assignments</Link>
-            {/* The "Check student result" button (link: /results) is hidden until results are published. */}
+            {resultsOpen && <Link href="/results" className="dkhome-btn ghost">Check student result</Link>}
           </div>
         </div>
       </header>
@@ -97,7 +109,7 @@ export default function Home() {
 
       <footer className="dkhome-foot">
         <div className="dkhome-in">
-          © {new Date().getFullYear()} De Kings Perfection Private School
+          © De Kings Perfection Private School
         </div>
       </footer>
     </div>
