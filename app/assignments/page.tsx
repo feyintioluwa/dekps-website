@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import "../cbt/cbt.css";
 
@@ -14,6 +14,7 @@ type Item = {
 const ALLOWED = ["image/jpeg", "image/png", "application/pdf"];
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_FILES = 3;
+const STORE = "dkpsStudent";
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString() : "");
 
 // Green = good (60% and above), yellow = average (45% to 59%), red = low (below 45%)
@@ -68,6 +69,19 @@ export default function AssignmentsPage() {
     return res.json();
   }, []);
 
+    useEffect(() => {
+    const saved = sessionStorage.getItem(STORE);
+    if (!saved) return;
+    try {
+      const c = JSON.parse(saved) as { loginId: string; pin: string };
+      call(c, { action: "list" })
+        .then((d) => {
+          if (d.status === "ok") { setCreds(c); setMe(d.student); setItems(d.items); }
+          else sessionStorage.removeItem(STORE);
+        })
+        .catch(() => {});
+    } catch { sessionStorage.removeItem(STORE); }
+  }, [call]);
   const errText = (s: string) =>
     ({
       locked: "Too many wrong attempts. Please wait 15 minutes.",
@@ -89,6 +103,7 @@ export default function AssignmentsPage() {
     try {
       const d = await call(c, { action: "list" });
       if (d.status !== "ok") return setMsg(errText(d.status));
+      sessionStorage.setItem(STORE, JSON.stringify(c));
       setCreds(c); setMe(d.student); setItems(d.items);
     } catch { setMsg("Could not reach the server."); }
     finally { setBusy(false); }
@@ -259,7 +274,7 @@ export default function AssignmentsPage() {
             </div>
           </div>
         ))}
-        <button className="cbt-btn alt" onClick={() => { setCreds(null); setMe(null); setPin(""); setItems([]); setOpenId(null); setMsg(""); }}>Log out</button>
+        <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem(STORE); setCreds(null); setMe(null); setPin(""); setItems([]); setOpenId(null); setMsg(""); }}>Log out</button>
       </div>
     </div>
   );

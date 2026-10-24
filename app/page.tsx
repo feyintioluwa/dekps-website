@@ -29,6 +29,7 @@ export default function Home() {
         <h2>Academic and Moral Excellence</h2>
         <p>Welcome to De Kings Perfection Private School. Parents and students can check results securely online.</p>
         <div className="hm-actions">
+          <Link className="hm-btn" href="/dashboard">Student Dashboard</Link>
           <Link className="hm-btn" href="/cbt">Take Test / Exam</Link>
           <Link className="hm-btn" href="/assignments">Assignments</Link>
           {resultsOpen && <Link className="hm-btn" href="/results">Check Student Result</Link>}
