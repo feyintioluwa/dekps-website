@@ -56,6 +56,7 @@ export default function AssignmentsPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [picked, setPicked] = useState<File[]>([]);
@@ -69,19 +70,23 @@ export default function AssignmentsPage() {
     return res.json();
   }, []);
 
-    useEffect(() => {
-    const saved = sessionStorage.getItem(STORE);
-    if (!saved) return;
-    try {
-      const c = JSON.parse(saved) as { loginId: string; pin: string };
-      call(c, { action: "list" })
-        .then((d) => {
-          if (d.status === "ok") { setCreds(c); setMe(d.student); setItems(d.items); }
+  // Use the login saved by the dashboard (or by another student page)
+  useEffect(() => {
+    let saved: { loginId: string; pin: string } | null = null;
+    try { saved = JSON.parse(sessionStorage.getItem(STORE) || "null"); } catch { saved = null; }
+    const run = async () => {
+      if (saved?.loginId && saved?.pin) {
+        try {
+          const d = await call(saved, { action: "list" });
+          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); }
           else sessionStorage.removeItem(STORE);
-        })
-        .catch(() => {});
-    } catch { sessionStorage.removeItem(STORE); }
+        } catch { /* stay on the login form */ }
+      }
+      setChecking(false);
+    };
+    run();
   }, [call]);
+
   const errText = (s: string) =>
     ({
       locked: "Too many wrong attempts. Please wait 15 minutes.",
@@ -159,6 +164,16 @@ export default function AssignmentsPage() {
       {me ? <span>{me.name} · {me.className}</span> : <Link href="/" className="home-btn">← Home</Link>}
     </div>
   );
+
+  // ---------- checking the saved login ----------
+  if (!creds && checking) {
+    return (
+      <div className="cbt">
+        {header}
+        <div className="cbt-wrap"><div className="cbt-card">Loading…</div></div>
+      </div>
+    );
+  }
 
   // ---------- login ----------
   if (!creds) {

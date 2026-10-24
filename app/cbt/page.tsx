@@ -42,6 +42,7 @@ export default function CbtPage() {
   const [left, setLeft] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const submitting = useRef(false);
+  const [checking, setChecking] = useState(true);
 
   const call = useCallback(
     async (c: { loginId: string; pin: string }, body: Record<string, unknown>) => {
@@ -66,6 +67,22 @@ export default function CbtPage() {
       not_allowed: "You cannot open this.",
     } as Record<string, string>)[s] ?? "Something went wrong. Try again.";
 
+  useEffect(() => {
+    let saved: { loginId: string; pin: string } | null = null;
+    try { saved = JSON.parse(sessionStorage.getItem("dkpsStudent") || "null"); } catch { saved = null; }
+    const run = async () => {
+      if (saved?.loginId && saved?.pin) {
+        try {
+          const d = await call(saved, { action: "list" });
+          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); }
+          else sessionStorage.removeItem("dkpsStudent");
+        } catch { /* stay on the login form */ }
+      }
+      setChecking(false);
+    };
+    run();
+  }, [call]);
+
   async function login(e: FormEvent) {
     e.preventDefault();
     setMsg("");
@@ -76,6 +93,7 @@ export default function CbtPage() {
       const d = await call(c, { action: "list" });
       if (d.status !== "ok") return setMsg(errText(d.status));
       setCreds(c); setMe(d.student); setItems(d.items);
+      sessionStorage.setItem("dkpsStudent", JSON.stringify(c));
     } catch { setMsg("Could not reach the server."); }
     finally { setBusy(false); }
   }
@@ -139,7 +157,7 @@ export default function CbtPage() {
   const header = (
     <div className="cbt-top">
       <h1>DE KINGS PERFECTION PRIVATE SCHOOL — TESTS &amp; EXAMS</h1>
-                  {me ? <span>{me.name} · {me.className}</span> : <Link href="/" className="home-btn">← Home</Link>}
+      {me ? <span>{me.name} · {me.className}</span> : <Link href="/" className="home-btn">← Home</Link>}
     </div>
   );
 
@@ -191,6 +209,15 @@ export default function CbtPage() {
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  if (!creds && checking) {
+    return (
+      <div className="cbt">
+        {header}
+        <div className="cbt-wrap"><div className="cbt-card">Loading…</div></div>
       </div>
     );
   }
@@ -247,7 +274,7 @@ export default function CbtPage() {
             </div>
           </div>
         ))}
-        <button className="cbt-btn alt" onClick={() => { setCreds(null); setMe(null); setPin(""); setResult(null); }}>Log out</button>
+        <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem("dkpsStudent"); setCreds(null); setMe(null); setPin(""); setResult(null); }}>Log out</button>
       </div>
     </div>
   );
