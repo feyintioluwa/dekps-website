@@ -286,6 +286,7 @@ export default function CbtPage() {
             </div>
           </div>
         ))}
+                <Link href="/dashboard" className="cbt-btn" style={{ display: "inline-block", textDecoration: "none", marginRight: 8 }}>← Back to dashboard</Link>
         <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem("dkpsStudent"); router.push("/dashboard"); }}>Log out</button>
       </div>
     </div>
