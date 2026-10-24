@@ -25,8 +25,8 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "invalid" }, { status: 400 }); }
   const classId = String(body.classId ?? "");
   if (!classId) return NextResponse.json({ error: "invalid" }, { status: 400 });
-  const open = body.open === true;
-  const row = open
+    const open = body.open === true;
+  const row: { class_id: string; is_open: boolean; code: string | null; opened_at: string | null } = open
     ? { class_id: classId, is_open: true, code: makeCode(), opened_at: new Date().toISOString() }
     : { class_id: classId, is_open: false, code: null, opened_at: null };
   const { error } = await a.sb.from("class_test_access").upsert(row, { onConflict: "class_id" });
