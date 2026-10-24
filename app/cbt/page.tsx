@@ -36,6 +36,7 @@ export default function CbtPage() {
   const [creds, setCreds] = useState<{ loginId: string; pin: string } | null>(null);
   const [me, setMe] = useState<{ name: string; className: string } | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [locked, setLocked] = useState(false);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState<Active | null>(null);
@@ -68,6 +69,7 @@ export default function CbtPage() {
       not_open: "This is not open yet.",
       closed: "This has closed.",
       not_allowed: "You cannot open this.",
+      test_locked: "Tests are locked. Enter the code from your teacher on the dashboard.",
     } as Record<string, string>)[s] ?? "Something went wrong. Try again.";
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function CbtPage() {
       if (saved?.loginId && saved?.pin) {
         try {
           const d = await call(saved, { action: "list" });
-          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); setChecking(false); return; }
+          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); setLocked(!!d.locked); setChecking(false); return; }
           sessionStorage.removeItem("dkpsStudent");
         } catch { /* fall through to the dashboard */ }
       }
@@ -101,7 +103,7 @@ export default function CbtPage() {
     try {
       const d = await call(c, { action: "list" });
       if (d.status !== "ok") return setMsg(errText(d.status));
-      setCreds(c); setMe(d.student); setItems(d.items);
+      setCreds(c); setMe(d.student); setItems(d.items); setLocked(!!d.locked);
       sessionStorage.setItem("dkpsStudent", JSON.stringify(c));
     } catch { setMsg("Could not reach the server."); }
     finally { setBusy(false); }
@@ -110,7 +112,7 @@ export default function CbtPage() {
   async function refresh() {
     if (!creds) return;
     const d = await call(creds, { action: "list" });
-    if (d.status === "ok") setItems(d.items);
+    if (d.status === "ok") { setItems(d.items); setLocked(!!d.locked); }
   }
 
   async function start(id: string) {
@@ -263,7 +265,8 @@ export default function CbtPage() {
         )}
         {msg && <div className="cbt-err">{msg}</div>}
         <h2 style={{ margin: "6px 0 12px", color: "#071f3d" }}>Your tests and exams</h2>
-        {items.length === 0 && <div className="cbt-card">Nothing is available for your class right now.</div>}
+        {locked && <div className="cbt-card">Tests and exams are locked. Go back to the dashboard and enter the code from your teacher.</div>}
+        {!locked && items.length === 0 && <div className="cbt-card">Nothing is available for your class right now.</div>}
         {items.map((it) => (
           <div className="cbt-card cbt-item" key={it.id}>
             <div>

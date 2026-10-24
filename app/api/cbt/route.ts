@@ -9,7 +9,11 @@ type Body = {
   attemptId?: string;
   questionId?: string;
   chosen?: string;
+  code?: string;
 };
+
+const MAX_FAILS = 5;
+const BLOCK_MS = 15 * 60000;
 
 const bad = (status: string, code = 400) =>
   NextResponse.json({ status }, { status: code });
@@ -27,6 +31,23 @@ async function loadQuestions(sb: SupabaseClient, assessmentId: string) {
     .in("id", [...ids])
     .order("position");
   return data ?? [];
+}
+
+// Is the class open, and has this student entered the current code?
+async function accessState(sb: SupabaseClient, studentId: string, classId: string) {
+  const { data: row } = await sb
+    .from("class_test_access")
+    .select("is_open, code")
+    .eq("class_id", String(classId))
+    .maybeSingle();
+  if (!row || !row.is_open || !row.code) return { classOpen: false, unlocked: false };
+  const { data: u } = await sb
+    .from("test_access_unlock")
+    .select("code")
+    .eq("student_id", String(studentId))
+    .eq("class_id", String(classId))
+    .maybeSingle();
+  return { classOpen: true, unlocked: !!u && u.code === row.code };
 }
 
 export async function POST(request: Request) {
@@ -61,6 +82,58 @@ export async function POST(request: Request) {
     end: a.end_at ?? a.closes_at,
   });
 
+  // ---------- access: is the lock on for this student? ----------
+  if (body.action === "access") {
+    const s = await accessState(sb, studentId, classId);
+    return NextResponse.json({ status: "ok", locked: !s.unlocked, classOpen: s.classOpen });
+  }
+
+  // ---------- unlock: student enters the class code ----------
+  if (body.action === "unlock") {
+    const { data: blk } = await sb
+      .from("test_access_block")
+      .select("fails, blocked_until")
+      .eq("student_id", String(studentId))
+      .maybeSingle();
+    if (blk?.blocked_until && new Date(blk.blocked_until).getTime() > now) {
+      return NextResponse.json({ status: "code_blocked" });
+    }
+    const { data: row } = await sb
+      .from("class_test_access")
+      .select("is_open, code")
+      .eq("class_id", String(classId))
+      .maybeSingle();
+    if (!row || !row.is_open || !row.code) return NextResponse.json({ status: "class_locked" });
+
+    const entered = String(body.code ?? "").trim().toUpperCase();
+    if (entered && entered === row.code) {
+      await sb
+        .from("test_access_unlock")
+        .upsert(
+          { student_id: String(studentId), class_id: String(classId), code: row.code, granted_at: new Date(now).toISOString() },
+          { onConflict: "student_id,class_id" }
+        );
+      await sb
+        .from("test_access_block")
+        .upsert({ student_id: String(studentId), fails: 0, blocked_until: null }, { onConflict: "student_id" });
+      return NextResponse.json({ status: "ok" });
+    }
+
+    // wrong code
+    const prevFails = blk?.blocked_until && new Date(blk.blocked_until).getTime() <= now ? 0 : blk?.fails ?? 0;
+    const fails = prevFails + 1;
+    if (fails >= MAX_FAILS) {
+      await sb
+        .from("test_access_block")
+        .upsert({ student_id: String(studentId), fails: 0, blocked_until: new Date(now + BLOCK_MS).toISOString() }, { onConflict: "student_id" });
+      return NextResponse.json({ status: "code_blocked" });
+    }
+    await sb
+      .from("test_access_block")
+      .upsert({ student_id: String(studentId), fails, blocked_until: null }, { onConflict: "student_id" });
+    return NextResponse.json({ status: "wrong_code", left: MAX_FAILS - fails });
+  }
+
   // ---------- list ----------
   if (!body.action || body.action === "login" || body.action === "list") {
     const { data: asms } = await sb
@@ -78,7 +151,7 @@ export async function POST(request: Request) {
       ? await sb.from("attempts").select("id, assessment_id, submitted_at, score, deadline").eq("student_id", studentId).in("assessment_id", ids)
       : { data: [] as { id: string; assessment_id: string; submitted_at: string | null; score: number | null; deadline: string | null }[] };
 
-    const items = list.map((a) => {
+    const allItems = list.map((a) => {
       const w = asmWindow(a);
       const att = (atts ?? []).find((t) => t.assessment_id === a.id);
       let state = "open";
@@ -99,9 +172,13 @@ export async function POST(request: Request) {
         score: att?.submitted_at ? att.score : null,
       };
     });
+    const access = await accessState(sb, studentId, classId);
+    // When locked, only a test already in progress is shown so it can be resumed
+    const items = access.unlocked ? allItems : allItems.filter((i) => i.state === "in_progress");
     return NextResponse.json({
       status: "ok",
       student: { name: me.o_name, className: me.o_class_name },
+      locked: !access.unlocked,
       items,
     });
   }
@@ -127,11 +204,15 @@ export async function POST(request: Request) {
     let attemptId: string;
     let deadline: string;
     if (existing) {
+      // A test already started can always be resumed, even if the class is locked now
       if (existing.submitted_at) return bad("already_submitted", 409);
       if (!existing.deadline || new Date(existing.deadline).getTime() <= now) return bad("expired", 409);
       attemptId = existing.id;
       deadline = existing.deadline;
     } else {
+      // A NEW attempt needs the class open and the code entered
+      const access = await accessState(sb, studentId, classId);
+      if (!access.unlocked) return bad("test_locked", 403);
       if (w.start && new Date(w.start).getTime() > now) return bad("not_open", 409);
       if (w.end && new Date(w.end).getTime() <= now) return bad("closed", 409);
       let dl = a.duration_minutes ? now + a.duration_minutes * 60000 : Infinity;

@@ -23,6 +23,9 @@ export default function Dashboard() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [access, setAccess] = useState<{ locked: boolean; classOpen: boolean } | null>(null);
+  const [code, setCode] = useState("");
+  const [codeMsg, setCodeMsg] = useState("");
 
   const load = useCallback(async (c: Creds) => {
     const res = await fetch("/api/dashboard", {
@@ -32,6 +35,41 @@ export default function Dashboard() {
     });
     return res.json();
   }, []);
+
+  const loadAccess = useCallback(async (c: Creds) => {
+    try {
+      const res = await fetch("/api/cbt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...c, action: "access" }),
+      });
+      const d = await res.json();
+      if (d.status === "ok") setAccess({ locked: d.locked, classOpen: d.classOpen });
+    } catch { /* stays locked */ }
+  }, []);
+
+  async function unlock(e: FormEvent) {
+    e.preventDefault();
+    setCodeMsg("");
+    let c: Creds | null = null;
+    try { c = JSON.parse(sessionStorage.getItem(STORE) || "null"); } catch { c = null; }
+    if (!c) return setCodeMsg("Please sign in again.");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/cbt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...c, action: "unlock", code }),
+      });
+      const d = await res.json();
+      if (d.status === "ok") { setCode(""); await loadAccess(c); }
+      else if (d.status === "code_blocked") setCodeMsg("Too many wrong codes. Please wait 15 minutes.");
+      else if (d.status === "class_locked") setCodeMsg("Tests are not open yet. Ask your teacher.");
+      else if (d.status === "wrong_code") setCodeMsg(`Wrong code. ${d.left} tries left.`);
+      else setCodeMsg("Something went wrong. Try again.");
+    } catch { setCodeMsg("Could not reach the server."); }
+    finally { setBusy(false); }
+  }
 
   const errText = (s: string) =>
     ({
@@ -48,7 +86,7 @@ export default function Dashboard() {
         try {
           const c = JSON.parse(saved) as Creds;
           const d = await load(c);
-          if (d.status === "ok") { setData(d); setChecking(false); return; }
+          if (d.status === "ok") { setData(d); loadAccess(c); setChecking(false); return; }
           sessionStorage.removeItem(STORE);
         } catch { /* show the login form */ }
       }
@@ -56,7 +94,7 @@ export default function Dashboard() {
       setChecking(false);
     };
     run();
-  }, [load]);
+  }, [load, loadAccess]);
 
   async function login(e: FormEvent) {
     e.preventDefault();
@@ -69,6 +107,7 @@ export default function Dashboard() {
       if (d.status !== "ok") return setMsg(errText(d.status));
       sessionStorage.setItem(STORE, JSON.stringify(c));
       setData(d);
+      loadAccess(c);
     } catch { setMsg("Could not reach the server."); }
     finally { setBusy(false); }
   }
@@ -77,6 +116,7 @@ export default function Dashboard() {
     sessionStorage.removeItem(STORE);
     sessionStorage.removeItem("dkpsVia");
     setData(null); setPin(""); setMsg("");
+    setAccess(null); setCode(""); setCodeMsg("");
   }
 
   // Opening Tests or Assignments: check the sign-in is still saved first
@@ -140,13 +180,32 @@ export default function Dashboard() {
 
         <div className="cbt-card">
           <span className="cbt-tag">Tests &amp; Exams</span>
-          <h3 style={{ marginTop: 6 }}>{data.tests.count > 0 ? `${data.tests.count} open now` : "Nothing open right now"}</h3>
-          {data.tests.items.map((t, i) => (
-            <p key={i} style={{ color: "#687385", fontSize: ".9rem" }}>
-              {t.subject} ({t.kind === "exam" ? "Exam" : "Test"}){t.end ? ` · closes ${fmt(t.end)}` : ""}
-            </p>
-          ))}
-          <Link href="/cbt" className="cbt-btn alt" style={linkBtn} onClick={(e) => openPage(e, "/cbt")}>Go to tests &amp; exams</Link>
+          {access && !access.locked ? (
+            <>
+              <h3 style={{ marginTop: 6 }}>{data.tests.count > 0 ? `${data.tests.count} open now` : "Nothing open right now"}</h3>
+              {data.tests.items.map((t, i) => (
+                <p key={i} style={{ color: "#687385", fontSize: ".9rem" }}>
+                  {t.subject} ({t.kind === "exam" ? "Exam" : "Test"}){t.end ? ` · closes ${fmt(t.end)}` : ""}
+                </p>
+              ))}
+              <Link href="/cbt" className="cbt-btn alt" style={linkBtn} onClick={(e) => openPage(e, "/cbt")}>Go to tests &amp; exams</Link>
+            </>
+          ) : (
+            <>
+              <h3 style={{ marginTop: 6 }}>Tests and exams are locked</h3>
+              {access?.classOpen ? (
+                <form onSubmit={unlock}>
+                  <p style={{ color: "#687385", marginBottom: 10 }}>Enter the code your teacher wrote on the board.</p>
+                  <input placeholder="6-character code" value={code} maxLength={6} onChange={(e) => setCode(e.target.value.toUpperCase())} autoComplete="off" />
+                  {codeMsg && <div className="cbt-err">{codeMsg}</div>}
+                  <button className="cbt-btn" disabled={busy || code.trim().length < 6}>{busy ? "Checking..." : "Unlock"}</button>
+                </form>
+              ) : (
+                <p style={{ color: "#687385" }}>Your teacher has not opened tests yet. They unlock in school.</p>
+              )}
+              <Link href="/cbt" style={{ ...linkBtn, fontSize: ".85rem" }} onClick={(e) => openPage(e, "/cbt")}>Already in a test? Resume it</Link>
+            </>
+          )}
         </div>
 
         <div className="cbt-card">

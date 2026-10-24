@@ -15,6 +15,7 @@ const NAV = [
   ["/admin/subjects", "📚", "Class Subjects"],
   ["/admin/broadsheet", "📑", "Scores & Results"],
   ["/admin/cbt", "📝", "Tests & Exams"],
+  ["/admin/test-access", "🔒", "Test Access"],
   ["/admin/assignments", "📋", "Assignments"],
   ["/admin/terms", "📅", "Terms & Sessions"],
 ] as const;
