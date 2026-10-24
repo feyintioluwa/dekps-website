@@ -113,5 +113,29 @@ export async function POST(request: Request) {
     if (error) return fail(error.message);
     return NextResponse.json({ ok: true });
   }
+    if (b.action === "deleteAll") {
+    const id = String(b.assignmentId ?? "");
+    if (!id) return fail("Choose an assignment", 400);
+    const { data: a } = await sb.from("assignments").select("id, title, is_published").eq("id", id).maybeSingle();
+    if (!a) return fail("Assignment not found", 404);
+    if (a.is_published) return fail("Unpublish this assignment first, then delete it.", 400);
+    if (String(b.confirmTitle ?? "").trim() !== String(a.title ?? "").trim()) {
+      return fail("The title you typed does not match, so nothing was deleted.", 400);
+    }
+    const { data: subs, error: e1 } = await sb.from("assignment_submissions").select("files").eq("assignment_id", id);
+    if (e1) return fail(e1.message);
+    const paths = (subs ?? [])
+      .flatMap((s) => ((s.files ?? []) as { path: string }[]).map((f) => f.path))
+      .filter(Boolean);
+    if (paths.length) {
+      const { error: e2 } = await sb.storage.from("assignments").remove(paths);
+      if (e2) return fail("Could not remove the uploaded files, so nothing was deleted: " + e2.message);
+    }
+    const { error: e3 } = await sb.from("assignment_submissions").delete().eq("assignment_id", id);
+    if (e3) return fail(e3.message);
+    const { error: e4 } = await sb.from("assignments").delete().eq("id", id);
+    if (e4) return fail(e4.message);
+    return NextResponse.json({ ok: true, removedFiles: paths.length });
+  }
   return fail("Unknown action", 400);
 }

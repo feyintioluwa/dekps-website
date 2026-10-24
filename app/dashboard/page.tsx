@@ -39,7 +39,7 @@ export default function Dashboard() {
       invalid: "Invalid Login ID or PIN.",
     } as Record<string, string>)[s] ?? "Something went wrong. Try again.";
 
-  useEffect(() => {
+   useEffect(() => {
     // Coming back here closes the doors to the test and assignment pages
     sessionStorage.removeItem("dkpsVia");
     const run = async () => {
@@ -48,9 +48,11 @@ export default function Dashboard() {
         try {
           const c = JSON.parse(saved) as Creds;
           const d = await load(c);
-          if (d.status === "ok") setData(d); else sessionStorage.removeItem(STORE);
+          if (d.status === "ok") { setData(d); setChecking(false); return; }
+          sessionStorage.removeItem(STORE);
         } catch { /* show the login form */ }
       }
+      setData(null);
       setChecking(false);
     };
     run();

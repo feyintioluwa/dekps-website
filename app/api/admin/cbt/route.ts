@@ -229,6 +229,18 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true, deleted, skipped });
   }
-
+    if (b.action === "deleteAll") {
+    const id = String(b.assessmentId ?? "");
+    if (!id) return fail("Missing test", 400);
+    const { data: a } = await sb.from("assessments").select("id, is_published").eq("id", id).maybeSingle();
+    if (!a) return fail("Test or exam not found", 404);
+    if (a.is_published) return fail("Unpublish it first, then delete it.", 400);
+    if (String(b.confirm ?? "").trim().toUpperCase() !== "DELETE") {
+      return fail("Type DELETE to confirm. Nothing was deleted.", 400);
+    }
+    const { error } = await sb.rpc("admin_delete_assessment", { p_id: id });
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true });
+  }
   return fail("Unknown action", 400);
 }

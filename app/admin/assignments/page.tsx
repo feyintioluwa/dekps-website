@@ -69,13 +69,24 @@ export default function AdminAssignments() {
       load();
     } catch (e) { setMsg((e as Error).message); }
   }
-    async function remove() {
+  async function remove() {
     if (!cur) return;
     if (!window.confirm(`Delete "${cur.title}"? This cannot be undone. It only works if no student has submitted.`)) return;
     try {
       await post({ action: "delete", assignmentId: sel });
       setSel(""); setSubs([]);
       setMsg("Assignment deleted.");
+      load();
+    } catch (e) { setMsg((e as Error).message); }
+  }
+  async function removeAll() {
+    if (!cur) return;
+    const typed = window.prompt(`This permanently deletes "${cur.title}", all student answers, marks and uploaded files for it. It cannot be undone.\n\nType the assignment title exactly to confirm:`);
+    if (typed === null) return;
+    try {
+      await post({ action: "deleteAll", assignmentId: sel, confirmTitle: typed });
+      setSel(""); setSubs([]);
+      setMsg("Assignment and all student work deleted.");
       load();
     } catch (e) { setMsg((e as Error).message); }
   }
@@ -164,7 +175,9 @@ export default function AdminAssignments() {
               {cur.instructions && <p style={{ whiteSpace: "pre-wrap" }}>{cur.instructions}</p>}
               <div className="adm-row" style={{ margin: "8px 0" }}>
                 <button onClick={() => publish(!cur.is_published)}>{cur.is_published ? "Unpublish" : "Publish"}</button>
+                <button onClick={loadSubs}>View submissions &amp; mark</button>
                 <button disabled={cur.is_published} onClick={remove}>Delete</button>
+                <button style={{ background: "#9e1824" }} disabled={cur.is_published} onClick={removeAll}>Delete with student work</button>
               </div>
 
               {subs.length > 0 && subs.map((r) => (

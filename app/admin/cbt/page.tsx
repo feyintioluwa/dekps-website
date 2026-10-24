@@ -124,6 +124,14 @@ export default function AdminCbt() {
     await post({ action: "deleteAssessment", assessmentId: sel });
     setSel(""); setQlist([]); setRows([]); await load(); setMsg("Deleted.");
   });
+    const deleteEverything = () => guard(async () => {
+    const typed = window.prompt(`This permanently deletes this ${cur?.kind === "exam" ? "exam" : "test"}, its questions, and ALL student attempts and answers. It cannot be undone.\n\nType DELETE to confirm.`);
+    if (typed === null) return;
+    await post({ action: "deleteAll", assessmentId: sel, confirm: typed });
+    setSel(""); setQlist([]); setRows([]); setEditQ(null);
+    await load();
+    setMsg("Deleted, including the students' attempts and answers.");
+  });
   const clearDrafts = () => guard(async () => {
     const n = asms.filter((a) => !a.is_published).length;
     if (!confirm(`Delete all ${n} draft tests/exams? Drafts that students have started, or whose questions are used in an exam, are kept. This cannot be undone.`)) return;
