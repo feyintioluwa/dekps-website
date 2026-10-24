@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, MouseEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import "../cbt/cbt.css";
 
@@ -39,7 +39,7 @@ export default function Dashboard() {
       invalid: "Invalid Login ID or PIN.",
     } as Record<string, string>)[s] ?? "Something went wrong. Try again.";
 
-   useEffect(() => {
+  useEffect(() => {
     // Coming back here closes the doors to the test and assignment pages
     sessionStorage.removeItem("dkpsVia");
     const run = async () => {
@@ -77,6 +77,18 @@ export default function Dashboard() {
     sessionStorage.removeItem(STORE);
     sessionStorage.removeItem("dkpsVia");
     setData(null); setPin(""); setMsg("");
+  }
+
+  // Opening Tests or Assignments: check the sign-in is still saved first
+  function openPage(e: MouseEvent, to: string) {
+    if (!sessionStorage.getItem(STORE)) {
+      e.preventDefault();
+      sessionStorage.removeItem("dkpsVia");
+      setData(null); setPin("");
+      setMsg("Please sign in again.");
+      return;
+    }
+    sessionStorage.setItem("dkpsVia", to);
   }
 
   const header = (
@@ -134,7 +146,7 @@ export default function Dashboard() {
               {t.subject} ({t.kind === "exam" ? "Exam" : "Test"}){t.end ? ` · closes ${fmt(t.end)}` : ""}
             </p>
           ))}
-          <Link href="/cbt" className="cbt-btn alt" style={linkBtn} onClick={() => sessionStorage.setItem("dkpsVia", "/cbt")}>Go to tests &amp; exams</Link>
+          <Link href="/cbt" className="cbt-btn alt" style={linkBtn} onClick={(e) => openPage(e, "/cbt")}>Go to tests &amp; exams</Link>
         </div>
 
         <div className="cbt-card">
@@ -148,7 +160,7 @@ export default function Dashboard() {
               {a.subject}: {a.title}{a.dueAt ? ` · deadline ${fmt(a.dueAt)}` : ""}
             </p>
           ))}
-          <Link href="/assignments" className="cbt-btn alt" style={linkBtn} onClick={() => sessionStorage.setItem("dkpsVia", "/assignments")}>Go to assignments</Link>
+          <Link href="/assignments" className="cbt-btn alt" style={linkBtn} onClick={(e) => openPage(e, "/assignments")}>Go to assignments</Link>
         </div>
 
         <button className="cbt-btn alt" onClick={logout}>Log out</button>
