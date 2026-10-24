@@ -7,10 +7,15 @@ import "./home.css";
 export default function Home() {
   // The results button shows only when the current term has published results
   const [resultsOpen, setResultsOpen] = useState(false);
+  const [sessionLabel, setSessionLabel] = useState("");
   useEffect(() => {
     fetch("/api/home", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setResultsOpen(!!d?.resultsOpen))
+      .catch(() => {});
+    fetch("/api/session", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.session) setSessionLabel(d.session); })
       .catch(() => {});
   }, []);
 
@@ -25,13 +30,11 @@ export default function Home() {
       </header>
 
       <section className="hm-hero">
-        <span>2026 / 2027 ACADEMIC SESSION</span>
+        <span>{sessionLabel ? sessionLabel.replace("/", " / ") + " " : ""}ACADEMIC SESSION</span>
         <h2>Academic and Moral Excellence</h2>
         <p>Welcome to De Kings Perfection Private School. Parents and students can check results securely online.</p>
         <div className="hm-actions">
           <Link className="hm-btn" href="/dashboard">Student Dashboard</Link>
-          <Link className="hm-btn" href="/cbt">Take Test / Exam</Link>
-          <Link className="hm-btn" href="/assignments">Assignments</Link>
           {resultsOpen && <Link className="hm-btn" href="/results">Check Student Result</Link>}
         </div>
       </section>
@@ -44,7 +47,7 @@ export default function Home() {
 
       <footer className="hm-foot">
         <strong>De Kings Perfection Private School</strong>
-        <div>2026/2027 Academic Session</div>
+        <div>{sessionLabel ? sessionLabel + " " : ""}Academic Session</div>
       </footer>
     </div>
   );

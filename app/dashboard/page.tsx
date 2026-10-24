@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [data, setData] = useState<Data | null>(null);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   const load = useCallback(async (c: Creds) => {
     const res = await fetch("/api/dashboard", {
@@ -39,12 +40,20 @@ export default function Dashboard() {
     } as Record<string, string>)[s] ?? "Something went wrong. Try again.";
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(STORE);
-    if (!saved) return;
-    try {
-      const c = JSON.parse(saved) as Creds;
-      load(c).then((d) => { if (d.status === "ok") setData(d); else sessionStorage.removeItem(STORE); }).catch(() => {});
-    } catch { sessionStorage.removeItem(STORE); }
+    // Coming back here closes the doors to the test and assignment pages
+    sessionStorage.removeItem("dkpsVia");
+    const run = async () => {
+      const saved = sessionStorage.getItem(STORE);
+      if (saved) {
+        try {
+          const c = JSON.parse(saved) as Creds;
+          const d = await load(c);
+          if (d.status === "ok") setData(d); else sessionStorage.removeItem(STORE);
+        } catch { /* show the login form */ }
+      }
+      setChecking(false);
+    };
+    run();
   }, [load]);
 
   async function login(e: FormEvent) {
@@ -64,6 +73,7 @@ export default function Dashboard() {
 
   function logout() {
     sessionStorage.removeItem(STORE);
+    sessionStorage.removeItem("dkpsVia");
     setData(null); setPin(""); setMsg("");
   }
 
@@ -73,6 +83,15 @@ export default function Dashboard() {
       {data ? <span>{data.student.name} · {data.student.className}</span> : <Link href="/" className="home-btn">← Home</Link>}
     </div>
   );
+
+  if (!data && checking) {
+    return (
+      <div className="cbt">
+        {header}
+        <div className="cbt-wrap"><div className="cbt-card">Loading…</div></div>
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -110,10 +129,10 @@ export default function Dashboard() {
           <h3 style={{ marginTop: 6 }}>{data.tests.count > 0 ? `${data.tests.count} open now` : "Nothing open right now"}</h3>
           {data.tests.items.map((t, i) => (
             <p key={i} style={{ color: "#687385", fontSize: ".9rem" }}>
-                            {t.subject} ({t.kind === "exam" ? "Exam" : "Test"}){t.end ? ` · closes ${fmt(t.end)}` : ""}
+              {t.subject} ({t.kind === "exam" ? "Exam" : "Test"}){t.end ? ` · closes ${fmt(t.end)}` : ""}
             </p>
           ))}
-          <Link href="/cbt" className="cbt-btn alt" style={linkBtn}>Go to tests &amp; exams</Link>
+          <Link href="/cbt" className="cbt-btn alt" style={linkBtn} onClick={() => sessionStorage.setItem("dkpsVia", "/cbt")}>Go to tests &amp; exams</Link>
         </div>
 
         <div className="cbt-card">
@@ -127,7 +146,7 @@ export default function Dashboard() {
               {a.subject}: {a.title}{a.dueAt ? ` · deadline ${fmt(a.dueAt)}` : ""}
             </p>
           ))}
-          <Link href="/assignments" className="cbt-btn alt" style={linkBtn}>Go to assignments</Link>
+          <Link href="/assignments" className="cbt-btn alt" style={linkBtn} onClick={() => sessionStorage.setItem("dkpsVia", "/assignments")}>Go to assignments</Link>
         </div>
 
         <button className="cbt-btn alt" onClick={logout}>Log out</button>

@@ -70,20 +70,22 @@ export default function CbtPage() {
     } as Record<string, string>)[s] ?? "Something went wrong. Try again.";
 
   useEffect(() => {
+    // This page can only be opened from the student dashboard
+    if (sessionStorage.getItem("dkpsVia") !== "/cbt") { router.replace("/dashboard"); return; }
     let saved: { loginId: string; pin: string } | null = null;
     try { saved = JSON.parse(sessionStorage.getItem("dkpsStudent") || "null"); } catch { saved = null; }
     const run = async () => {
       if (saved?.loginId && saved?.pin) {
         try {
           const d = await call(saved, { action: "list" });
-          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); }
-          else sessionStorage.removeItem("dkpsStudent");
-        } catch { /* stay on the login form */ }
+          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); setChecking(false); return; }
+          sessionStorage.removeItem("dkpsStudent");
+        } catch { /* fall through to the dashboard */ }
       }
-      setChecking(false);
+      router.replace("/dashboard");
     };
     run();
-  }, [call]);
+  }, [call, router]);
 
   async function login(e: FormEvent) {
     e.preventDefault();

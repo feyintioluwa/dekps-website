@@ -74,20 +74,22 @@ export default function AssignmentsPage() {
 
   // Use the login saved by the dashboard (or by another student page)
   useEffect(() => {
+    // This page can only be opened from the student dashboard
+    if (sessionStorage.getItem("dkpsVia") !== "/assignments") { router.replace("/dashboard"); return; }
     let saved: { loginId: string; pin: string } | null = null;
     try { saved = JSON.parse(sessionStorage.getItem(STORE) || "null"); } catch { saved = null; }
     const run = async () => {
       if (saved?.loginId && saved?.pin) {
         try {
           const d = await call(saved, { action: "list" });
-          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); }
-          else sessionStorage.removeItem(STORE);
-        } catch { /* stay on the login form */ }
+          if (d.status === "ok") { setCreds(saved); setMe(d.student); setItems(d.items); setChecking(false); return; }
+          sessionStorage.removeItem(STORE);
+        } catch { /* fall through to the dashboard */ }
       }
-      setChecking(false);
+      router.replace("/dashboard");
     };
     run();
-  }, [call]);
+  }, [call, router]);
 
   const errText = (s: string) =>
     ({
