@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import "../cbt/cbt.css";
 
 type Item = {
@@ -57,6 +58,7 @@ export default function AssignmentsPage() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(true);
+  const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [picked, setPicked] = useState<File[]>([]);
@@ -289,7 +291,7 @@ export default function AssignmentsPage() {
             </div>
           </div>
         ))}
-        <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem(STORE); setCreds(null); setMe(null); setPin(""); setItems([]); setOpenId(null); setMsg(""); }}>Log out</button>
+        <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem(STORE); router.push("/dashboard"); }}>Log out</button>
       </div>
     </div>
   );

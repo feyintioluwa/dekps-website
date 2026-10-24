@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import "./cbt.css";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Item = {
   id: string; kind: string; subject: string; maxScore: number; duration: number | null;
@@ -43,6 +44,7 @@ export default function CbtPage() {
   const [result, setResult] = useState<Result | null>(null);
   const submitting = useRef(false);
   const [checking, setChecking] = useState(true);
+  const router = useRouter();
 
   const call = useCallback(
     async (c: { loginId: string; pin: string }, body: Record<string, unknown>) => {
@@ -274,7 +276,7 @@ export default function CbtPage() {
             </div>
           </div>
         ))}
-        <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem("dkpsStudent"); setCreds(null); setMe(null); setPin(""); setResult(null); }}>Log out</button>
+        <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem("dkpsStudent"); router.push("/dashboard"); }}>Log out</button>
       </div>
     </div>
   );
