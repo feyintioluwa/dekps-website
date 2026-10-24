@@ -45,6 +45,7 @@ export default function CbtPage() {
   const submitting = useRef(false);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
+  const entered = useRef(false);
 
   const call = useCallback(
     async (c: { loginId: string; pin: string }, body: Record<string, unknown>) => {
@@ -71,7 +72,11 @@ export default function CbtPage() {
 
   useEffect(() => {
     // This page can only be opened from the student dashboard
-    if (sessionStorage.getItem("dkpsVia") !== "/cbt") { router.replace("/dashboard"); return; }
+    if (!entered.current) {
+      if (sessionStorage.getItem("dkpsVia") !== "/cbt") { router.replace("/dashboard"); return; }
+      sessionStorage.removeItem("dkpsVia"); // one-time pass
+      entered.current = true;
+    }
     let saved: { loginId: string; pin: string } | null = null;
     try { saved = JSON.parse(sessionStorage.getItem("dkpsStudent") || "null"); } catch { saved = null; }
     const run = async () => {

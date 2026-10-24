@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import "../cbt/cbt.css";
@@ -59,6 +59,7 @@ export default function AssignmentsPage() {
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
+  const entered = useRef(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [picked, setPicked] = useState<File[]>([]);
@@ -75,7 +76,11 @@ export default function AssignmentsPage() {
   // Use the login saved by the dashboard (or by another student page)
   useEffect(() => {
     // This page can only be opened from the student dashboard
-    if (sessionStorage.getItem("dkpsVia") !== "/assignments") { router.replace("/dashboard"); return; }
+    if (!entered.current) {
+      if (sessionStorage.getItem("dkpsVia") !== "/assignments") { router.replace("/dashboard"); return; }
+      sessionStorage.removeItem("dkpsVia"); // one-time pass
+      entered.current = true;
+    }
     let saved: { loginId: string; pin: string } | null = null;
     try { saved = JSON.parse(sessionStorage.getItem(STORE) || "null"); } catch { saved = null; }
     const run = async () => {
