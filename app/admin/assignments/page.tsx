@@ -28,6 +28,7 @@ export default function AdminAssignments() {
   const [sel, setSel] = useState("");
   const [subs, setSubs] = useState<Sub[]>([]);
   const [edit, setEdit] = useState<Record<string, { score: string; comment: string }>>({});
+  const [saved, setSaved] = useState<Record<string, { ok: boolean; text: string }>>({});
 
   const h = { "Content-Type": "application/json", "x-admin-key": key };
   const post = async (body: object) => {
@@ -82,9 +83,13 @@ export default function AdminAssignments() {
   async function mark(studentId: string) {
     try {
       const e = edit[studentId] ?? { score: "", comment: "" };
+      setSaved((s) => ({ ...s, [studentId]: { ok: true, text: "Saving..." } }));
       await post({ action: "mark", assignmentId: sel, studentId, score: e.score, comment: e.comment });
-      setMsg("Saved.");
-    } catch (er) { setMsg((er as Error).message); }
+      const max = cur?.max_score ?? "";
+      setSaved((s) => ({ ...s, [studentId]: { ok: true, text: e.score === "" ? "Saved (no mark)" : `Saved: ${e.score}/${max}` } }));
+    } catch (er) {
+      setSaved((s) => ({ ...s, [studentId]: { ok: false, text: (er as Error).message } }));
+    }
   }
 
   const classSubjects = subjects.filter((s) => links.some((l) => l.class_id === f.classId && l.subject_id === s.id));
@@ -179,6 +184,11 @@ export default function AdminAssignments() {
                           onChange={(e) => setEdit({ ...edit, [r.studentId]: { score: edit[r.studentId]?.score ?? "", comment: e.target.value } })} />
                         <button onClick={() => mark(r.studentId)}>Save mark</button>
                       </div>
+                      {saved[r.studentId] && (
+                        <div style={{ marginTop: 6, fontWeight: 600, color: saved[r.studentId].ok ? "#1a7f4b" : "#c62828" }}>
+                          {saved[r.studentId].ok ? "✓ " : "✗ "}{saved[r.studentId].text}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
