@@ -110,7 +110,7 @@ export default function Dashboard() {
           <h3 style={{ marginTop: 6 }}>{data.tests.count > 0 ? `${data.tests.count} open now` : "Nothing open right now"}</h3>
           {data.tests.items.map((t, i) => (
             <p key={i} style={{ color: "#687385", fontSize: ".9rem" }}>
-              {t.subject} ({t.kind}){t.end ? ` · closes ${fmt(t.end)}` : ""}
+                            {t.subject} ({t.kind === "exam" ? "Exam" : "Test"}){t.end ? ` · closes ${fmt(t.end)}` : ""}
             </p>
           ))}
           <Link href="/cbt" className="cbt-btn alt" style={linkBtn}>Go to tests &amp; exams</Link>
