@@ -16,6 +16,37 @@ const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_FILES = 3;
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString() : "");
 
+// Green = good (60% and above), yellow = average (45% to 59%), red = low (below 45%)
+function tone(score: number, max: number) {
+  const pct = max > 0 ? (score / max) * 100 : 0;
+  if (pct >= 60) return { c: "#1a8f4c", bg: "#e8f6ee" };
+  if (pct >= 45) return { c: "#c98a00", bg: "#fff6dc" };
+  return { c: "#c62828", bg: "#fdeaea" };
+}
+
+// A mark written like a teacher's pen circle: 7/10
+function Mark({ score, max, size }: { score: number; max: number; size: "big" | "small" }) {
+  const t = tone(score, max);
+  const big = size === "big";
+  return (
+    <span
+      aria-label={`${score} out of ${max}`}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        minWidth: big ? 150 : 62, minHeight: big ? 110 : 46,
+        padding: big ? "10px 28px" : "4px 12px",
+        border: `${big ? 5 : 3}px solid ${t.c}`, color: t.c, background: t.bg,
+        borderRadius: "58% 42% 55% 45% / 48% 56% 44% 52%",
+        transform: "rotate(-4deg)",
+        fontFamily: '"Bradley Hand","Segoe Print","Comic Sans MS",cursive',
+        fontWeight: 700, fontSize: big ? "2.8rem" : "1.15rem", lineHeight: 1,
+      }}
+    >
+      {score}/{max}
+    </span>
+  );
+}
+
 export default function AssignmentsPage() {
   const [loginId, setLoginId] = useState("");
   const [pin, setPin] = useState("");
@@ -151,9 +182,13 @@ export default function AssignmentsPage() {
             {cur.instructions && <p style={{ margin: "12px 0", whiteSpace: "pre-wrap" }}>{cur.instructions}</p>}
 
             {cur.state === "marked" && (
-              <div style={{ margin: "12px 0", padding: 10, background: "#eef7f1", borderRadius: 8 }}>
-                <b>Mark: {cur.score}/{cur.maxScore}</b>
-                {cur.comment && <p style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>Teacher&apos;s comment: {cur.comment}</p>}
+              <div style={{ margin: "18px 0", textAlign: "center" }}>
+                <Mark score={cur.score ?? 0} max={cur.maxScore} size="big" />
+                {cur.comment && (
+                  <p style={{ margin: "16px auto 0", whiteSpace: "pre-wrap", textAlign: "left", maxWidth: 520 }}>
+                    <b>Teacher&apos;s comment:</b> {cur.comment}
+                  </p>
+                )}
               </div>
             )}
             {cur.state === "closed" && !cur.submittedAt && <p style={{ color: "#a33" }}>The deadline has passed and nothing was submitted.</p>}
@@ -213,7 +248,7 @@ export default function AssignmentsPage() {
               </small>
             </div>
             <div style={{ textAlign: "right" }}>
-              {it.state === "marked" && <b>{it.score}/{it.maxScore}</b>}
+              {it.state === "marked" && <Mark score={it.score ?? 0} max={it.maxScore} size="small" />}
               {it.state === "submitted" && <small>Submitted</small>}
               {it.state === "closed" && <small>Closed</small>}
               <div style={{ marginTop: 6 }}>
