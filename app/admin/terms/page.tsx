@@ -80,7 +80,7 @@ export default function AdminTerms() {
               >
                 <span aria-hidden="true" style={{ display: "inline-block", width: 10, textAlign: "center", transition: "transform .2s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
                 <span>{s}</span>
-                <span style={{ fontWeight: 400, fontSize: 13, color: "#6b7480" }}>{rows.length} terms</span>
+                <span style={{ fontWeight: 400, fontSize: 13, color: "#6b7480" }}>{rows.length} {rows.length === 1 ? "term" : "terms"}</span>
                 {hasCurrent && <span style={{ fontWeight: 500, fontSize: 12, padding: "2px 10px", borderRadius: 99, background: "#e8f3ea", color: "#1f6b35" }}>Current session</span>}
               </button>
               <button
