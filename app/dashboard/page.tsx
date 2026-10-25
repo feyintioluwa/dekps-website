@@ -6,17 +6,22 @@ import "../cbt/cbt.css";
 import "./dashboard.css";
 
 type Creds = { loginId: string; pin: string };
+type Soon = { kind: "test" | "exam" | "assignment"; subject: string; title: string; at: string; label: "opens" | "closes" | "due" };
 type Data = {
   student: { name: string; className: string };
+  term?: { term: string; session: string } | null;
   subjects?: string[];
+  soon?: Soon[];
   tests: { count: number; items: { subject: string; kind: string; end: string | null }[] };
   assignments: { todoCount: number; markedCount: number; items: { title: string; subject: string; dueAt: string | null }[] };
-  results: { count: number; latest: string | null };
+  results: { count: number; latest: string | null; grade?: string | null; average?: number | null; teacherRemark?: string | null };
 };
 
 const STORE = "dkpsStudent";
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString() : "");
 const linkBtn = { display: "inline-block", textDecoration: "none", marginTop: 10 } as const;
+const kindName = { test: "Test", exam: "Exam", assignment: "Assignment" } as const;
+const whenWord = { opens: "opens", closes: "closes", due: "due" } as const;
 
 export default function Dashboard() {
   const [loginId, setLoginId] = useState("");
@@ -181,11 +186,14 @@ export default function Dashboard() {
     );
   }
 
+  const r = data.results;
+
   return (
     <div className="cbt">
       {header}
       <div className="cbt-wrap">
-        <h2 style={{ margin: "6px 0 14px", color: "#071f3d" }}>Welcome, {data.student.name}</h2>
+        <h2 style={{ margin: "6px 0 4px", color: "#071f3d" }}>Welcome, {data.student.name}</h2>
+        {data.term && <p style={{ margin: "0 0 14px", color: "#687385" }}>Current term: {data.term.term} — {data.term.session}</p>}
 
         {data.subjects && data.subjects.length > 0 && (
           <div className="cbt-card">
@@ -200,10 +208,35 @@ export default function Dashboard() {
         )}
 
         <div className="cbt-card">
+          <span className="cbt-tag">Coming up</span>
+          {data.soon && data.soon.length > 0 ? (
+            <>
+              <h3 style={{ marginTop: 6 }}>Next on your list</h3>
+              {data.soon.map((s, i) => (
+                <p key={i} style={{ color: "#687385", fontSize: ".9rem", margin: "6px 0" }}>
+                  <strong style={{ color: "#071f3d" }}>{s.subject ? `${s.subject}: ` : ""}{s.kind === "assignment" ? s.title : kindName[s.kind]}</strong>
+                  {" "}· {whenWord[s.label]} {fmt(s.at)}
+                </p>
+              ))}
+            </>
+          ) : (
+            <h3 style={{ marginTop: 6 }}>Nothing coming up</h3>
+          )}
+        </div>
+
+        <div className="cbt-card">
           <span className="cbt-tag">Results</span>
-          <h3 style={{ marginTop: 6 }}>{data.results.count > 0 ? "Your results are ready" : "No published results yet"}</h3>
-          {data.results.latest && <p style={{ color: "#687385" }}>Latest: {data.results.latest}</p>}
-          {data.results.count > 0 && <Link href="/results" className="cbt-btn" style={linkBtn}>View results</Link>}
+          <h3 style={{ marginTop: 6 }}>{r.count > 0 ? "Your results are ready" : "No published results yet"}</h3>
+          {r.latest && <p style={{ color: "#687385" }}>Latest: {r.latest}</p>}
+          {r.count > 0 && (r.grade || r.average != null) && (
+            <p style={{ margin: "8px 0", fontWeight: 600, color: "#071f3d" }}>
+              {r.average != null ? `Average ${r.average.toFixed(2)}%` : ""}{r.average != null && r.grade ? " · " : ""}{r.grade ? `Grade ${r.grade}` : ""}
+            </p>
+          )}
+          {r.count > 0 && r.teacherRemark && (
+            <p style={{ color: "#687385", fontSize: ".9rem", margin: "6px 0" }}>Teacher&apos;s remark: {r.teacherRemark}</p>
+          )}
+          {r.count > 0 && <Link href="/results" className="cbt-btn" style={linkBtn}>View results</Link>}
         </div>
 
         <div className="cbt-card">
@@ -250,7 +283,10 @@ export default function Dashboard() {
           <Link href="/assignments" className="cbt-btn alt" style={linkBtn} onClick={(e) => openPage(e, "/assignments")}>Go to assignments</Link>
         </div>
 
-        <button className="cbt-btn alt" onClick={logout}>Log out</button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <button className="cbt-btn alt" onClick={logout}>Log out</button>
+          <Link href="/" className="cbt-btn alt" style={{ textDecoration: "none", display: "inline-block" }}>Back to school website</Link>
+        </div>
       </div>
     </div>
   );

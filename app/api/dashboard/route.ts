@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 const bad = (status: string, code = 400) => NextResponse.json({ status }, { status: code });
 
+type Soon = { kind: "test" | "exam" | "assignment"; subject: string; title: string; at: string; label: "opens" | "closes" | "due" };
+
 export async function POST(request: Request) {
   let body: { loginId?: string; pin?: string };
   try { body = await request.json(); } catch { return bad("invalid"); }
@@ -23,6 +25,8 @@ export async function POST(request: Request) {
   const classId: string = me.o_class_id;
   const now = Date.now();
 
+  const { data: cur } = await sb.from("terms").select("term, session").eq("is_active", true).maybeSingle();
+
   const { data: asms } = await sb.from("assessments")
     .select("id, kind, subject_id, start_at, end_at, opens_at, closes_at")
     .eq("class_id", classId).eq("is_published", true);
@@ -38,6 +42,13 @@ export async function POST(request: Request) {
     if (start && new Date(start).getTime() > now) return false;
     if (end && new Date(end).getTime() < now) return false;
     return true;
+  });
+  // Tests not yet submitted and not yet over (open now or opening later), for the Coming up list
+  const liveTests = asmList.filter((a) => {
+    const att = (atts ?? []).find((t) => t.assessment_id === a.id);
+    if (att?.submitted_at) return false;
+    const end = a.end_at ?? a.closes_at;
+    return !(end && new Date(end).getTime() < now);
   });
 
   const { data: asgs } = await sb.from("assignments")
@@ -56,7 +67,9 @@ export async function POST(request: Request) {
   const ids = [loginId];
   const { data: stu } = await sb.from("students").select("previous_login_id").eq("login_id", loginId).maybeSingle();
   if (stu?.previous_login_id) ids.push(stu.previous_login_id);
-  const { data: res } = await sb.from("student_results").select("term, session").in("login_id", ids).order("created_at", { ascending: false });
+  const { data: res } = await sb.from("student_results")
+    .select("term, session, grade, average, teacher_remark, school_remark")
+    .in("login_id", ids).order("created_at", { ascending: false });
 
   // The student's subjects: every subject of the class, unless the student has their own list (e.g. SSS electives)
   const { data: cs } = await sb.from("class_subjects").select("subject_id, position").eq("class_id", classId).order("position");
@@ -64,17 +77,37 @@ export async function POST(request: Request) {
   const mySet = new Set((mine ?? []).map((x) => x.subject_id));
   const classSubIds = (cs ?? []).map((x) => x.subject_id).filter((id) => mySet.size === 0 || mySet.has(id));
 
-  const subjIds = [...new Set([...openTests.map((a) => a.subject_id), ...todo.map((a) => a.subject_id), ...classSubIds])];
+  const subjIds = [...new Set([
+    ...openTests.map((a) => a.subject_id), ...liveTests.map((a) => a.subject_id),
+    ...todo.map((a) => a.subject_id), ...classSubIds,
+  ])];
   const { data: subjects } = subjIds.length
     ? await sb.from("subjects").select("id, name").in("id", subjIds)
     : { data: [] as { id: string; name: string }[] };
   const sname = (id: string) => (subjects ?? []).find((s) => s.id === id)?.name ?? "";
   const subjectList = classSubIds.map(sname).filter(Boolean);
 
+  // Coming up: tests opening or closing, and assignment deadlines, soonest first
+  const soon: Soon[] = [];
+  for (const a of liveTests) {
+    const start = a.start_at ?? a.opens_at;
+    const end = a.end_at ?? a.closes_at;
+    const kind = a.kind === "exam" ? "exam" : "test";
+    if (start && new Date(start).getTime() > now) soon.push({ kind, subject: sname(a.subject_id), title: kind === "exam" ? "Exam" : "Test", at: start, label: "opens" });
+    else if (end) soon.push({ kind, subject: sname(a.subject_id), title: kind === "exam" ? "Exam" : "Test", at: end, label: "closes" });
+  }
+  for (const a of todo) {
+    if (a.due_at) soon.push({ kind: "assignment", subject: sname(a.subject_id), title: a.title, at: a.due_at, label: "due" });
+  }
+  soon.sort((x, y) => new Date(x.at).getTime() - new Date(y.at).getTime());
+
+  const latest = res?.[0];
   return NextResponse.json({
     status: "ok",
     student: { name: me.o_name, className: me.o_class_name },
+    term: cur ? { term: cur.term, session: cur.session } : null,
     subjects: subjectList,
+    soon: soon.slice(0, 6),
     tests: {
       count: openTests.length,
       items: openTests.slice(0, 5).map((a) => ({ subject: sname(a.subject_id), kind: a.kind, end: a.end_at ?? a.closes_at })),
@@ -86,7 +119,10 @@ export async function POST(request: Request) {
     },
     results: {
       count: (res ?? []).length,
-      latest: res?.[0] ? `${res[0].term} — ${res[0].session}` : null,
+      latest: latest ? `${latest.term} — ${latest.session}` : null,
+      grade: latest?.grade ?? null,
+      average: latest?.average != null ? Number(latest.average) : null,
+      teacherRemark: latest?.teacher_remark ?? null,
     },
   });
 }
