@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import "./admin.css";
 import { useAdminKey } from "../AdminShell";
+import { useConfirm } from "../Dialog";
 
 type ClassRow = { id: string; name: string; id_prefix: string | null };
 type Created = { name: string; loginId: string; pin: string };
@@ -10,6 +11,7 @@ type Student = { id: string; login_id: string; name: string; is_active: boolean;
 
 export default function AdminStudents() {
   const adminKey = useAdminKey();
+  const ask = useConfirm();
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [classId, setClassId] = useState("");
   const [names, setNames] = useState("");
@@ -98,14 +100,14 @@ export default function AdminStudents() {
   });
 
   const resetPin = (s: Student) => act(async () => {
-    if (!window.confirm(`Reset the PIN for ${s.name} (${s.login_id})? The old PIN will stop working.`)) return;
+    if (!(await ask({ title: "Reset PIN?", message: `Reset the PIN for ${s.name} (${s.login_id})? The old PIN will stop working.`, confirmText: "Reset PIN", danger: true }))) return;
     const d = await post({ action: "resetPin", loginId: s.login_id });
     setNotice(`New PIN for ${s.name} (${s.login_id}): ${d.pin}. It is shown only once, so write it down now.`);
   });
 
   const toggleActive = (s: Student) => act(async () => {
     const next = !s.is_active;
-    if (!next && !window.confirm(`Deactivate ${s.name}? They will not be able to log in. Nothing is deleted.`)) return;
+    if (!next && !(await ask({ title: "Deactivate student?", message: `Deactivate ${s.name}? They will not be able to log in. Nothing is deleted.`, confirmText: "Deactivate", danger: true }))) return;
     await post({ action: "setActive", id: s.id, value: next });
     await loadList(mClassId);
   });
@@ -113,7 +115,7 @@ export default function AdminStudents() {
   const doMove = (s: Student) => act(async () => {
     const to = classes.find((c) => c.id === moveTo);
     if (!to) { setMsg("Choose the new class first"); return; }
-    if (!window.confirm(`Move ${s.name} to ${to.name}? They will get a NEW Login ID. The PIN stays the same.`)) return;
+    if (!(await ask({ title: "Move student?", message: `Move ${s.name} to ${to.name}? They will get a NEW Login ID. The PIN stays the same.`, confirmText: "Move student" }))) return;
     const d = await post({ action: "moveClass", studentId: s.id, classId: moveTo });
     setNotice(`${s.name} moved to ${to.name}. New Login ID: ${d.loginId}. The PIN is unchanged.`);
     setMoveId("");

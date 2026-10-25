@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import "../students/admin.css";
 import { useAdminKey } from "../AdminShell";
+import { useConfirm } from "../Dialog";
 
 type Opt = { id: string; name: string };
 type Asm = { id: string; kind: string; class_id: string; subject_id: string; max_score: number; duration_minutes: number; start_at: string | null; end_at: string | null; is_published: boolean; instructions: string | null };
@@ -33,6 +34,7 @@ function parse(text: string): { qs: Q[]; errors: string[] } {
 
 export default function AdminCbt() {
   const key = useAdminKey();
+  const ask = useConfirm();
   const [classes, setClasses] = useState<Opt[]>([]);
   const [subjects, setSubjects] = useState<Opt[]>([]);
   const [links, setLinks] = useState<Link[]>([]);
@@ -133,23 +135,26 @@ export default function AdminCbt() {
     await load(); setMsg("Details saved.");
   });
   const deleteTest = () => guard(async () => {
-    if (!confirm("Delete this test/exam and all its questions? This cannot be undone.")) return;
+    if (!(await ask({ title: "Delete this test/exam?", message: "This deletes the test/exam and all its questions. This cannot be undone.", confirmText: "Delete", danger: true }))) return;
     await post({ action: "deleteAssessment", assessmentId: sel });
     setSel(""); setQlist([]); setRows([]); await load(); setMsg("Deleted.");
   });
   const deleteEverything = () => guard(async () => {
-    const typed = window.prompt(
-      `This permanently deletes this ${cur?.kind === "exam" ? "exam" : "test"}, its questions, and ALL student attempts and answers. It cannot be undone.\n\nType DELETE to confirm.`
-    );
-    if (typed === null) return;
-    await post({ action: "deleteAll", assessmentId: sel, confirm: typed });
+    if (!(await ask({
+      title: "Delete permanently?",
+      message: `This permanently deletes this ${cur?.kind === "exam" ? "exam" : "test"}, its questions, and ALL student attempts and answers. It cannot be undone.`,
+      confirmText: "Delete permanently",
+      danger: true,
+      typeToConfirm: "DELETE",
+    }))) return;
+    await post({ action: "deleteAll", assessmentId: sel, confirm: "DELETE" });
     setSel(""); setQlist([]); setRows([]); setEditQ(null);
     await load();
     setMsg("Deleted, including the students' attempts and answers.");
   });
   const clearDrafts = () => guard(async () => {
     const n = asms.filter((a) => !a.is_published).length;
-    if (!confirm(`Delete all ${n} draft tests/exams? Drafts that students have started, or whose questions are used in an exam, are kept. This cannot be undone.`)) return;
+    if (!(await ask({ title: `Delete all ${n} draft tests/exams?`, message: "Drafts that students have started, or whose questions are used in an exam, are kept. This cannot be undone.", confirmText: "Delete drafts", danger: true }))) return;
     const d = await post({ action: "deleteDrafts" });
     setSel(""); setQlist([]); setRows([]); setEditQ(null);
     await load();
@@ -164,12 +169,12 @@ export default function AdminCbt() {
     setEditQ(null); await loadQuestions(); setMsg("Question saved.");
   });
   const deleteQuestion = (id: string) => guard(async () => {
-    if (!confirm("Delete this question? This cannot be undone.")) return;
+    if (!(await ask({ title: "Delete this question?", message: "This cannot be undone.", confirmText: "Delete", danger: true }))) return;
     await post({ action: "deleteQuestion", questionId: id });
     await loadQuestions(); loadResults(); setMsg("Question deleted.");
   });
   const removePulled = (id: string) => guard(async () => {
-    if (!confirm("Remove this question from the exam? It stays in its original test.")) return;
+    if (!(await ask({ title: "Remove from exam?", message: "The question stays in its original test.", confirmText: "Remove" }))) return;
     await post({ action: "removeFromExam", examId: sel, questionId: id });
     await loadQuestions(); loadResults(); setMsg("Removed from the exam.");
   });

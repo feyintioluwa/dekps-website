@@ -4,6 +4,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import "../students/admin.css";
 import { useAdminKey } from "../AdminShell";
+import { useConfirm } from "../Dialog";
 
 type Opt = { id: string; name: string };
 type Stu = { id: string; login_id: string; name: string };
@@ -20,6 +21,7 @@ const norm = (v: unknown) => String(v ?? "").toUpperCase().replace(/\s+/g, " ").
 
 export default function Broadsheet() {
   const key = useAdminKey();
+  const ask = useConfirm();
   const [classes, setClasses] = useState<Opt[]>([]);
   const [terms, setTerms] = useState<Record<string, unknown>[] | null>(null);
   const [classId, setClassId] = useState("all");
@@ -231,7 +233,7 @@ export default function Broadsheet() {
   }
   async function publish() {
     if (!termId) return setMsg("Choose the term first.");
-    if (!confirm(classId === "all" ? "Publish results for ALL classes?" : "Publish results for this class?")) return;
+    if (!(await ask({ title: classId === "all" ? "Publish results for ALL classes?" : "Publish results for this class?", message: "Students will be able to see these results.", confirmText: "Publish" }))) return;
     setBusy(true);
     try {
       const lines: string[] = [];

@@ -5,6 +5,7 @@ import "./cbt.css";
 import "../dashboard/dashboard.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DialogProvider, useConfirm } from "@/lib/dialog";
 
 type Item = {
   id: string; kind: string; subject: string; maxScore: number; duration: number | null;
@@ -32,6 +33,15 @@ const mmss = (ms: number) => {
 };
 
 export default function CbtPage() {
+  return (
+    <DialogProvider>
+      <CbtPageInner />
+    </DialogProvider>
+  );
+}
+
+function CbtPageInner() {
+  const ask = useConfirm();
   const [loginId, setLoginId] = useState("");
   const [pin, setPin] = useState("");
   const [creds, setCreds] = useState<{ loginId: string; pin: string } | null>(null);
@@ -218,7 +228,7 @@ export default function CbtPage() {
                 {idx < active.questions.length - 1 ? (
                   <button className="cbt-btn" onClick={() => setIdx(idx + 1)}>Next</button>
                 ) : (
-                  <button className="cbt-btn" disabled={busy} onClick={() => { if (confirm("Submit now? You cannot change answers after this.")) submit(); }}>Submit</button>
+                  <button className="cbt-btn" disabled={busy} onClick={async () => { if (await ask({ title: "Submit test?", message: "You cannot change your answers after this.", confirmText: "Submit" })) submit(); }}>Submit</button>
                 )}
               </div>
               <div className="cbt-dots">

@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import "../students/admin.css";
 import { useAdminKey } from "../AdminShell";
+import { useConfirm } from "../Dialog";
 
 type Opt = { id: string; name: string };
 type Item = { subject_id: string; position: number };
 
 export default function ClassSubjects() {
   const key = useAdminKey();
+  const ask = useConfirm();
   const [classes, setClasses] = useState<Opt[]>([]);
   const [subjects, setSubjects] = useState<Opt[]>([]);
   const [classId, setClassId] = useState("");
@@ -72,7 +74,7 @@ export default function ClassSubjects() {
   });
 
   const remove = (s: Opt) => act(async () => {
-    if (!window.confirm(`Remove "${s.name}" from ${className}? Scores already saved are NOT deleted, but the subject will no longer appear in this class's template or in newly published results.`)) return;
+    if (!(await ask({ title: "Remove subject?", message: `Remove "${s.name}" from ${className}? Scores already saved are NOT deleted, but the subject will no longer appear in this class's template or in newly published results.`, confirmText: "Remove", danger: true }))) return;
     await post({ action: "remove", classId, subjectId: s.id });
     await loadClass(classId);
     setMsg(`"${s.name}" removed from ${className}.`);

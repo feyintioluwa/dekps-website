@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import "../students/admin.css";
 import { useAdminKey } from "../AdminShell";
+import { useConfirm } from "../Dialog";
 
 type Opt = { id: string; name: string };
 type Link = { class_id: string; subject_id: string };
@@ -18,6 +19,7 @@ type Sub = {
 
 export default function AdminAssignments() {
   const key = useAdminKey();
+  const ask = useConfirm();
   const [classes, setClasses] = useState<Opt[]>([]);
   const [subjects, setSubjects] = useState<Opt[]>([]);
   const [links, setLinks] = useState<Link[]>([]);
@@ -71,7 +73,7 @@ export default function AdminAssignments() {
   }
   async function remove() {
     if (!cur) return;
-    if (!window.confirm(`Delete "${cur.title}"? This cannot be undone. It only works if no student has submitted.`)) return;
+    if (!(await ask({ title: "Delete assignment?", message: `Delete "${cur.title}"? This cannot be undone. It only works if no student has submitted.`, confirmText: "Delete", danger: true }))) return;
     try {
       await post({ action: "delete", assignmentId: sel });
       setSel(""); setSubs([]);
@@ -81,10 +83,15 @@ export default function AdminAssignments() {
   }
   async function removeAll() {
     if (!cur) return;
-    const typed = window.prompt(`This permanently deletes "${cur.title}", all student answers, marks and uploaded files for it. It cannot be undone.\n\nType the assignment title exactly to confirm:`);
-    if (typed === null) return;
+    if (!(await ask({
+      title: "Delete permanently?",
+      message: `This permanently deletes "${cur.title}", all student answers, marks and uploaded files for it. It cannot be undone.`,
+      confirmText: "Delete permanently",
+      danger: true,
+      typeToConfirm: cur.title,
+    }))) return;
     try {
-      await post({ action: "deleteAll", assignmentId: sel, confirmTitle: typed });
+      await post({ action: "deleteAll", assignmentId: sel, confirmTitle: cur.title });
       setSel(""); setSubs([]);
       setMsg("Assignment and all student work deleted.");
       load();

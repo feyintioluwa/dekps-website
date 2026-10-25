@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import "../students/admin.css";
 import { useAdminKey } from "../AdminShell";
+import { useConfirm } from "../Dialog";
 
 type T = { id: string; session: string; term: string; is_active: boolean | null; is_locked: boolean | null; is_published: boolean | null };
 const ORDER = ["First Term", "Second Term", "Third Term"];
 
 export default function AdminTerms() {
   const key = useAdminKey();
+  const ask = useConfirm();
   const [terms, setTerms] = useState<T[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,7 +70,7 @@ export default function AdminTerms() {
                 <td>{t.is_published ? "Published" : "Not published"}</td>
                 <td>
                   <div className="adm-row">
-                    <button disabled={busy || !!t.is_active} onClick={() => { if (confirm(`Make ${t.term} ${t.session} the current term?`)) act({ action: "setActive", id: t.id }, "Current term updated."); }}>Make current</button>
+                    <button disabled={busy || !!t.is_active} onClick={async () => { if (await ask({ title: "Make current term?", message: `Make ${t.term} ${t.session} the current term?`, confirmText: "Make current" })) act({ action: "setActive", id: t.id }, "Current term updated."); }}>Make current</button>
                     <button disabled={busy} onClick={() => act({ action: "lock", id: t.id, value: !t.is_locked }, t.is_locked ? "Term unlocked." : "Term locked.")}>{t.is_locked ? "Unlock" : "Lock"}</button>
                   </div>
                 </td>
