@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import "./home.css";
 
+type Notice = { id: string; title: string; body: string; postedAt: string };
+
 export default function Home() {
   // The results button shows only when the current term has published results
   const [resultsOpen, setResultsOpen] = useState(false);
   const [sessionLabel, setSessionLabel] = useState("");
+  const [notices, setNotices] = useState<Notice[]>([]);
   useEffect(() => {
     fetch("/api/home", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
@@ -16,6 +19,10 @@ export default function Home() {
     fetch("/api/session", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.session) setSessionLabel(d.session); })
+      .catch(() => {});
+    fetch("/api/notices", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setNotices(d?.notices ?? []))
       .catch(() => {});
   }, []);
 
@@ -38,6 +45,18 @@ export default function Home() {
           {resultsOpen && <Link className="hm-btn" href="/results">Check Student Result</Link>}
         </div>
       </section>
+
+      {notices.length > 0 && (
+        <section className="hm-cards">
+          {notices.map((n) => (
+            <div className="hm-card" key={n.id}>
+              <h3>{n.title}</h3>
+              <small style={{ display: "block", opacity: 0.7, margin: "2px 0 8px" }}>{new Date(n.postedAt).toLocaleDateString()}</small>
+              <p style={{ whiteSpace: "pre-wrap" }}>{n.body}</p>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="hm-cards">
         <div className="hm-card"><h3>Results Portal</h3><p>Use your Student Login ID and 4-digit PIN to view and print your result.</p></div>
