@@ -1,0 +1,71 @@
+/* Student dashboard header: home arrow at the left, school name at the right, one line */
+.cbt .cbt-top.dash-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.cbt .cbt-top.dash-top h1 {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: clamp(9px, 3.2vw, 1.1rem);
+  letter-spacing: 0.02em;
+  font-weight: 800;
+}
+.dash-back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #d4ad58;
+  color: #071f3d;
+  text-decoration: none;
+}
+
+/* Login and unlock buttons: same width as the text boxes */
+.cbt form.cbt-card .cbt-btn,
+.cbt .cbt-card form .cbt-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* After login: school logo at the left, student name and class at the right */
+.dash-logo {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+.cbt .cbt-top.dash-top .dash-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  line-height: 1.25;
+  color: inherit;
+}
+.cbt .cbt-top.dash-top .dash-who strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.cbt .cbt-top.dash-top .dash-who small {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}

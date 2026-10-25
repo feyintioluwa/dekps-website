@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import "./cbt.css";
+import "../dashboard/dashboard.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -165,10 +166,23 @@ export default function CbtPage() {
     } catch { setMsg("Answer not saved yet. Check your connection."); }
   }
 
-  const header = (
-    <div className="cbt-top">
-      <h1>DE KINGS PERFECTION PRIVATE SCHOOL — TESTS &amp; EXAMS</h1>
-      {me ? <span>{me.name} · {me.className}</span> : <Link href="/" className="home-btn">← Home</Link>}
+  const header = me ? (
+    <div className="cbt-top dash-top">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/assets/kps-logo.png" alt="De Kings Perfection Private School" className="dash-logo" />
+      <div className="dash-who">
+        <strong>{me.name}</strong>
+        <small>{me.className}</small>
+      </div>
+    </div>
+  ) : (
+    <div className="cbt-top dash-top">
+      <Link href="/" className="dash-back" aria-label="Back to home" title="Home">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+      </Link>
+      <h1>DE KINGS PERFECTION PRIVATE SCHOOL</h1>
     </div>
   );
 
@@ -242,7 +256,7 @@ export default function CbtPage() {
           <form className="cbt-card" onSubmit={login}>
             <h2>Student Login</h2>
             <p style={{ color: "#687385", marginBottom: 14 }}>Use your Student Login ID and 4-digit PIN.</p>
-            <input placeholder="Login ID" value={loginId} onChange={(e) => setLoginId(e.target.value)} autoComplete="off" />
+            <input placeholder="Login ID" value={loginId} onChange={(e) => setLoginId(e.target.value.toUpperCase())} autoComplete="off" autoCapitalize="characters" />
             <input placeholder="4-digit PIN" type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value)} autoComplete="new-password" />
             {msg && <div className="cbt-err">{msg}</div>}
             <button className="cbt-btn" disabled={busy}>{busy ? "Checking..." : "Login"}</button>
@@ -286,7 +300,7 @@ export default function CbtPage() {
             </div>
           </div>
         ))}
-                <Link href="/dashboard" className="cbt-btn" style={{ display: "inline-block", textDecoration: "none", marginRight: 8 }}>← Back to dashboard</Link>
+        <Link href="/dashboard" className="cbt-btn" style={{ display: "inline-block", textDecoration: "none", marginRight: 8 }}>← Back to dashboard</Link>
         <button className="cbt-btn alt" onClick={() => { sessionStorage.removeItem("dkpsStudent"); router.push("/dashboard"); }}>Log out</button>
       </div>
     </div>
