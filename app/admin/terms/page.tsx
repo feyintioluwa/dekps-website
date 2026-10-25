@@ -15,6 +15,7 @@ export default function AdminTerms() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [session, setSession] = useState("");
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
 
   const h = { "Content-Type": "application/json", "x-admin-key": key };
 
@@ -39,10 +40,16 @@ export default function AdminTerms() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
-  const sorted = [...terms].sort((a, b) =>
-    a.session === b.session ? ORDER.indexOf(a.term) - ORDER.indexOf(b.term) : b.session.localeCompare(a.session)
-  );
   const current = terms.find((t) => t.is_active);
+
+  // Group terms by session, newest session first, terms in First/Second/Third order
+  const sessions = Array.from(new Set(terms.map((t) => t.session))).sort((a, b) => b.localeCompare(a));
+  const termsOf = (s: string) =>
+    terms.filter((t) => t.session === s).sort((a, b) => ORDER.indexOf(a.term) - ORDER.indexOf(b.term));
+
+  // A session is open if the user toggled it; otherwise only the current session starts open
+  const isOpen = (s: string) => (s in opened ? opened[s] : s === current?.session);
+  const toggle = (s: string) => setOpened((o) => ({ ...o, [s]: !isOpen(s) }));
 
   return (
     <div className="adm">
@@ -57,28 +64,50 @@ export default function AdminTerms() {
         <button disabled={busy || !session.trim()} onClick={() => act({ action: "addSession", session }, "Session added.").then(() => setSession(""))}>Add session</button>
       </div>
 
-      <h2>2. All terms</h2>
-      <div style={{ overflowX: "auto" }}>
-        <table>
-          <thead><tr><th>Session</th><th>Term</th><th>Status</th><th>Results</th><th>Actions</th></tr></thead>
-          <tbody>
-            {sorted.map((t) => (
-              <tr key={t.id}>
-                <td>{t.session}</td>
-                <td>{t.term}</td>
-                <td>{t.is_active ? "Current" : "-"}{t.is_locked ? " · Locked" : ""}</td>
-                <td>{t.is_published ? "Published" : "Not published"}</td>
-                <td>
-                  <div className="adm-row">
-                    <button disabled={busy || !!t.is_active} onClick={async () => { if (await ask({ title: "Make current term?", message: `Make ${t.term} ${t.session} the current term?`, confirmText: "Make current" })) act({ action: "setActive", id: t.id }, "Current term updated."); }}>Make current</button>
-                    <button disabled={busy} onClick={() => act({ action: "lock", id: t.id, value: !t.is_locked }, t.is_locked ? "Term unlocked." : "Term locked.")}>{t.is_locked ? "Unlock" : "Lock"}</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <h2>2. All sessions</h2>
+      {sessions.map((s) => {
+        const rows = termsOf(s);
+        const open = isOpen(s);
+        const hasCurrent = rows.some((t) => t.is_active);
+        return (
+          <div key={s} style={{ border: "1px solid #e6e9ee", borderRadius: 8, marginBottom: 12, overflow: "hidden" }}>
+            <button
+              type="button"
+              aria-expanded={open}
+              onClick={() => toggle(s)}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#fff", color: "#0a1f3c", border: 0, borderRadius: 0, cursor: "pointer", fontWeight: 600, fontSize: 16, textAlign: "left" }}
+            >
+              <span aria-hidden="true" style={{ display: "inline-block", width: 10, textAlign: "center", transition: "transform .2s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+              <span>{s}</span>
+              <span style={{ fontWeight: 400, fontSize: 13, color: "#6b7480" }}>{rows.length} terms</span>
+              {hasCurrent && <span style={{ fontWeight: 500, fontSize: 12, padding: "2px 10px", borderRadius: 99, background: "#e8f3ea", color: "#1f6b35" }}>Current session</span>}
+            </button>
+
+            {open && (
+              <div style={{ overflowX: "auto" }}>
+                <table>
+                  <thead><tr><th>Term</th><th>Status</th><th>Results</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {rows.map((t) => (
+                      <tr key={t.id}>
+                        <td>{t.term}</td>
+                        <td>{t.is_active ? "Current" : "-"}{t.is_locked ? " · Locked" : ""}</td>
+                        <td>{t.is_published ? "Published" : "Not published"}</td>
+                        <td>
+                          <div className="adm-row">
+                            <button disabled={busy || !!t.is_active} onClick={async () => { if (await ask({ title: "Make current term?", message: `Make ${t.term} ${t.session} the current term?`, confirmText: "Make current" })) act({ action: "setActive", id: t.id }, "Current term updated."); }}>Make current</button>
+                            <button disabled={busy} onClick={() => act({ action: "lock", id: t.id, value: !t.is_locked }, t.is_locked ? "Term unlocked." : "Term locked.")}>{t.is_locked ? "Unlock" : "Lock"}</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
       {terms.length === 0 && <p>No terms found.</p>}
     </div>
   );
