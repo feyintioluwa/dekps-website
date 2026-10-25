@@ -27,6 +27,14 @@ export async function POST(request: Request) {
 
   const { data: cur } = await sb.from("terms").select("term, session").eq("is_active", true).maybeSingle();
 
+  // Notices for this student's class (or all classes) that have not expired, newest first
+  const nowIso = new Date(now).toISOString();
+  const { data: nts } = await sb.from("notices")
+    .select("id, title, body, created_at")
+    .or(`class_id.is.null,class_id.eq.${classId}`)
+    .or(`hide_after.is.null,hide_after.gt.${nowIso}`)
+    .order("created_at", { ascending: false }).limit(3);
+
   const { data: asms } = await sb.from("assessments")
     .select("id, kind, subject_id, start_at, end_at, opens_at, closes_at")
     .eq("class_id", classId).eq("is_published", true);
@@ -106,6 +114,7 @@ export async function POST(request: Request) {
     status: "ok",
     student: { name: me.o_name, className: me.o_class_name },
     term: cur ? { term: cur.term, session: cur.session } : null,
+    notices: (nts ?? []).map((x) => ({ id: x.id, title: x.title, body: x.body, postedAt: x.created_at })),
     subjects: subjectList,
     soon: soon.slice(0, 6),
     tests: {

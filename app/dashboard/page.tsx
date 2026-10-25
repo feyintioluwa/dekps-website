@@ -12,6 +12,7 @@ type Data = {
   term?: { term: string; session: string } | null;
   subjects?: string[];
   soon?: Soon[];
+  notices?: { id: string; title: string; body: string; postedAt: string }[];
   tests: { count: number; items: { subject: string; kind: string; end: string | null }[] };
   assignments: { todoCount: number; markedCount: number; items: { title: string; subject: string; dueAt: string | null }[] };
   results: { count: number; latest: string | null; grade?: string | null; average?: number | null; teacherRemark?: string | null };
@@ -194,6 +195,19 @@ export default function Dashboard() {
       <div className="cbt-wrap">
         <h2 style={{ margin: "6px 0 4px", color: "#071f3d" }}>Welcome, {data.student.name}</h2>
         {data.term && <p style={{ margin: "0 0 14px", color: "#687385" }}>Current term: {data.term.term} — {data.term.session}</p>}
+
+        {data.notices && data.notices.length > 0 && (
+          <div className="cbt-card">
+            <span className="cbt-tag">Notices</span>
+            {data.notices.map((n) => (
+              <div key={n.id} style={{ marginTop: 10 }}>
+                <h3 style={{ margin: 0 }}>{n.title}</h3>
+                <p style={{ color: "#687385", fontSize: ".8rem", margin: "2px 0 6px" }}>{new Date(n.postedAt).toLocaleDateString()}</p>
+                <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{n.body}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {data.subjects && data.subjects.length > 0 && (
           <div className="cbt-card">
