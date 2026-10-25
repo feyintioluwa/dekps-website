@@ -54,6 +54,7 @@ export default function AdminCbt() {
   const [editDur, setEditDur] = useState("");
   const [editInstr, setEditInstr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showQs, setShowQs] = useState(false); // question list is hidden until you open it
 
   const h = { "Content-Type": "application/json", "x-admin-key": key };
   const post = async (body: object) => {
@@ -121,7 +122,7 @@ export default function AdminCbt() {
   }
   function selectAsm(id: string, dur?: string, instr?: string) {
     const a = asms.find((x) => x.id === id);
-    setSel(id); setRows([]); setQlist([]); setEditQ(null); setAlsoSel(new Set());
+    setSel(id); setRows([]); setQlist([]); setEditQ(null); setAlsoSel(new Set()); setShowQs(false);
     setEditDur(dur ?? String(a?.duration_minutes ?? ""));
     setEditInstr(instr ?? a?.instructions ?? "");
     if (id) loadQuestions(id);
@@ -303,9 +304,14 @@ export default function AdminCbt() {
                 <p style={{ fontSize: ".8rem", color: "#687385" }}>To delete with student work, unpublish it first.</p>
               )}
 
-              <h3>Questions ({qlist.length})</h3>
-              {qlist.length === 0 && <p>No questions yet.</p>}
-              {qlist.map((q, i) => (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <h3>Questions ({qlist.length})</h3>
+                <button type="button" onClick={() => setShowQs((v) => !v)}>
+                  {showQs ? "Hide questions" : "Show questions"}
+                </button>
+              </div>
+              {showQs && qlist.length === 0 && <p>No questions yet.</p>}
+              {showQs && qlist.map((q, i) => (
                 <div key={q.id} style={{ border: "1px solid #dfe4ea", borderRadius: 10, padding: 12, marginBottom: 10 }}>
                   {editQ === q.id ? (
                     <>
