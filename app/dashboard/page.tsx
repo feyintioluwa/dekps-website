@@ -8,6 +8,7 @@ import "./dashboard.css";
 type Creds = { loginId: string; pin: string };
 type Data = {
   student: { name: string; className: string };
+  subjects?: string[];
   tests: { count: number; items: { subject: string; kind: string; end: string | null }[] };
   assignments: { todoCount: number; markedCount: number; items: { title: string; subject: string; dueAt: string | null }[] };
   results: { count: number; latest: string | null };
@@ -185,6 +186,18 @@ export default function Dashboard() {
       {header}
       <div className="cbt-wrap">
         <h2 style={{ margin: "6px 0 14px", color: "#071f3d" }}>Welcome, {data.student.name}</h2>
+
+        {data.subjects && data.subjects.length > 0 && (
+          <div className="cbt-card">
+            <span className="cbt-tag">My subjects</span>
+            <h3 style={{ marginTop: 6 }}>{data.subjects.length} {data.subjects.length === 1 ? "subject" : "subjects"} this term</h3>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+              {data.subjects.map((s) => (
+                <span key={s} style={{ padding: "6px 12px", borderRadius: 999, background: "#eef3fa", color: "#071f3d", fontSize: ".9rem", fontWeight: 500 }}>{s}</span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="cbt-card">
           <span className="cbt-tag">Results</span>

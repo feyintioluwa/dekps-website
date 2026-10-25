@@ -58,15 +58,23 @@ export async function POST(request: Request) {
   if (stu?.previous_login_id) ids.push(stu.previous_login_id);
   const { data: res } = await sb.from("student_results").select("term, session").in("login_id", ids).order("created_at", { ascending: false });
 
-  const subjIds = [...new Set([...openTests.map((a) => a.subject_id), ...todo.map((a) => a.subject_id)])];
+  // The student's subjects: every subject of the class, unless the student has their own list (e.g. SSS electives)
+  const { data: cs } = await sb.from("class_subjects").select("subject_id, position").eq("class_id", classId).order("position");
+  const { data: mine } = await sb.from("student_subjects").select("subject_id").eq("student_id", studentId);
+  const mySet = new Set((mine ?? []).map((x) => x.subject_id));
+  const classSubIds = (cs ?? []).map((x) => x.subject_id).filter((id) => mySet.size === 0 || mySet.has(id));
+
+  const subjIds = [...new Set([...openTests.map((a) => a.subject_id), ...todo.map((a) => a.subject_id), ...classSubIds])];
   const { data: subjects } = subjIds.length
     ? await sb.from("subjects").select("id, name").in("id", subjIds)
     : { data: [] as { id: string; name: string }[] };
   const sname = (id: string) => (subjects ?? []).find((s) => s.id === id)?.name ?? "";
+  const subjectList = classSubIds.map(sname).filter(Boolean);
 
   return NextResponse.json({
     status: "ok",
     student: { name: me.o_name, className: me.o_class_name },
+    subjects: subjectList,
     tests: {
       count: openTests.length,
       items: openTests.slice(0, 5).map((a) => ({ subject: sname(a.subject_id), kind: a.kind, end: a.end_at ?? a.closes_at })),
