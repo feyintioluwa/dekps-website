@@ -3,6 +3,16 @@ import { adminClient } from "@/lib/admin";
 
 const TERMS = ["First Term", "Second Term", "Third Term"];
 
+// Tables that point at terms.term_id. If any of them has rows for a session's terms, the session cannot be deleted.
+// (Four of them would be wiped by cascade, and student_results would lose its term link.)
+const DATA_TABLES: { table: string; label: string }[] = [
+  { table: "scores", label: "scores" },
+  { table: "assessments", label: "tests" },
+  { table: "assignments", label: "assignments" },
+  { table: "student_remarks", label: "remarks" },
+  { table: "student_results", label: "published results" },
+];
+
 export async function GET(request: Request) {
   const c = adminClient(request);
   if ("error" in c) return NextResponse.json({ error: c.error }, { status: c.status });
@@ -34,6 +44,29 @@ export async function POST(request: Request) {
     const { error } = await sb.from("terms").insert(rows);
     if (error) return fail(error.message);
     return NextResponse.json({ ok: true, added: rows.length });
+  }
+
+  // Delete a session (all its terms), only if it is empty: not current, no scores, tests, assignments, remarks or results
+  if (b.action === "deleteSession") {
+    const session = String(b.session ?? "").trim();
+    if (!session) return fail("Missing session", 400);
+    const { data: rows, error: e1 } = await sb.from("terms").select("id, is_active").eq("session", session);
+    if (e1) return fail(e1.message);
+    if (!rows || !rows.length) return fail("That session was not found", 404);
+    if (rows.some((r) => r.is_active)) return fail("This session has the current term. Make another term current first.", 400);
+
+    const ids = rows.map((r) => r.id);
+    const used: string[] = [];
+    for (const { table, label } of DATA_TABLES) {
+      const { count, error } = await sb.from(table).select("*", { count: "exact", head: true }).in("term_id", ids);
+      if (error) return fail(`Could not check ${label}: ${error.message}`);
+      if (count && count > 0) used.push(label);
+    }
+    if (used.length) return fail(`Cannot delete ${session}. It still has ${used.join(", ")}.`, 400);
+
+    const { error: e2 } = await sb.from("terms").delete().in("id", ids);
+    if (e2) return fail(e2.message);
+    return NextResponse.json({ ok: true, deleted: ids.length });
   }
 
   // Make one term the current term (all others become not current)

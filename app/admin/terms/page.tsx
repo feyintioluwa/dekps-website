@@ -71,17 +71,30 @@ export default function AdminTerms() {
         const hasCurrent = rows.some((t) => t.is_active);
         return (
           <div key={s} style={{ border: "1px solid #e6e9ee", borderRadius: 8, marginBottom: 12, overflow: "hidden" }}>
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={() => toggle(s)}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#fff", color: "#0a1f3c", border: 0, borderRadius: 0, cursor: "pointer", fontWeight: 600, fontSize: 16, textAlign: "left" }}
-            >
-              <span aria-hidden="true" style={{ display: "inline-block", width: 10, textAlign: "center", transition: "transform .2s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
-              <span>{s}</span>
-              <span style={{ fontWeight: 400, fontSize: 13, color: "#6b7480" }}>{rows.length} terms</span>
-              {hasCurrent && <span style={{ fontWeight: 500, fontSize: 12, padding: "2px 10px", borderRadius: 99, background: "#e8f3ea", color: "#1f6b35" }}>Current session</span>}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", background: "#fff", paddingRight: 12 }}>
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => toggle(s)}
+                style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#fff", color: "#0a1f3c", border: 0, borderRadius: 0, cursor: "pointer", fontWeight: 600, fontSize: 16, textAlign: "left" }}
+              >
+                <span aria-hidden="true" style={{ display: "inline-block", width: 10, textAlign: "center", transition: "transform .2s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                <span>{s}</span>
+                <span style={{ fontWeight: 400, fontSize: 13, color: "#6b7480" }}>{rows.length} terms</span>
+                {hasCurrent && <span style={{ fontWeight: 500, fontSize: 12, padding: "2px 10px", borderRadius: 99, background: "#e8f3ea", color: "#1f6b35" }}>Current session</span>}
+              </button>
+              <button
+                type="button"
+                disabled={busy || hasCurrent}
+                title={hasCurrent ? "Make another term current before deleting this session" : "Delete this session"}
+                onClick={async () => {
+                  if (await ask({ title: "Delete session?", message: `Delete ${s} and its three terms? This only works if the session has no scores, tests, assignments, remarks or results. It cannot be undone.`, confirmText: "Delete session" }))
+                    act({ action: "deleteSession", session: s }, `Session ${s} deleted.`);
+                }}
+              >
+                Delete session
+              </button>
+            </div>
 
             {open && (
               <div style={{ overflowX: "auto" }}>
