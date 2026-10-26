@@ -8,7 +8,8 @@ import "./dashboard.css";
 type Creds = { loginId: string; pin: string };
 type Soon = { kind: "test" | "exam" | "assignment"; subject: string; title: string; at: string; label: "opens" | "closes" | "due" };
 type Data = {
-  student: { name: string; className: string };
+  student: { name: string; className: string; loginId?: string };
+  prefect?: { role: string; session: string } | null;
   term?: { term: string; session: string } | null;
   subjects?: string[];
   soon?: Soon[];
@@ -20,6 +21,15 @@ type Data = {
 
 const STORE = "dkpsStudent";
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString() : "");
+// Gold: head boy / head girl and their assistants. Blue: senior prefect. Green: every other role.
+const badgeStyle = (role: string) => {
+  const r = role.toLowerCase();
+  if (r.includes("head boy") || r.includes("head girl")) return { bg: "#fbe3b0", edge: "#e0b45a", fg: "#6b4a00" };
+  if (r.includes("senior")) return { bg: "#dbeafe", edge: "#9dc0ee", fg: "#1f4e8c" };
+  return { bg: "#d4f0d4", edge: "#8fcf8f", fg: "#17621f" };
+};
+const initials = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 const linkBtn = { display: "inline-block", textDecoration: "none", marginTop: 10 } as const;
 const kindName = { test: "Test", exam: "Exam", assignment: "Assignment" } as const;
 const whenWord = { opens: "opens", closes: "closes", due: "due" } as const;
@@ -193,7 +203,24 @@ export default function Dashboard() {
     <div className="cbt">
       {header}
       <div className="cbt-wrap">
-        <h2 style={{ margin: "6px 0 4px", color: "#071f3d" }}>Welcome, {data.student.name}</h2>
+        <div style={{ background: "#fff", border: "1px solid #e3e8ef", borderRadius: 14, padding: 20, margin: "6px 0 12px" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#cfe3fb", color: "#1f5fa8", display: "grid", placeItems: "center", fontSize: "1.4rem", fontWeight: 600 }}>
+            {initials(data.student.name)}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginTop: 12 }}>
+            <h2 style={{ margin: 0, color: "#071f3d", fontSize: "1.35rem" }}>{data.student.name}</h2>
+            {data.prefect && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px", borderRadius: 999, fontWeight: 600, fontSize: ".9rem", background: badgeStyle(data.prefect.role).bg, border: `1px solid ${badgeStyle(data.prefect.role).edge}`, color: badgeStyle(data.prefect.role).fg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9.2-8 11-4.5-1.8-8-6-8-11V5l8-3z" /></svg>
+                {data.prefect.role}
+              </span>
+            )}
+          </div>
+          <p style={{ margin: "4px 0 0", color: "#55627a" }}>
+            {data.student.className}{data.student.loginId ? ` · Login ID ${data.student.loginId}` : ""}
+          </p>
+          {data.prefect && <p style={{ margin: "2px 0 0", color: "#687385", fontSize: ".9rem" }}>Prefect for {data.prefect.session} session</p>}
+        </div>
         {data.term && <p style={{ margin: "0 0 14px", color: "#687385" }}>Current term: {data.term.term} — {data.term.session}</p>}
 
         {data.notices && data.notices.length > 0 && (
