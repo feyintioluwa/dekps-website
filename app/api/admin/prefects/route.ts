@@ -3,10 +3,12 @@ import { adminClient } from "@/lib/admin";
 
 // Change this list to add or remove roles. Gold, blue and green colours are decided on the dashboard.
 const ROLES = [
-  "Head boy", "Head girl",
-  "Assistant head boy", "Assistant head girl",
-  "Senior prefect",
-  "Library prefect", "Sports prefect", "Health prefect", "Time keeper",
+  "Head Boy", "Head Girl",
+  "Assistant Head Boy", "Assistant Head Girl",
+  "Labour Prefect",
+  "Library/Laboratory Prefect", "Health Prefect", "Time Keeper", "Chapel Prefect", "Assistant Labour Prefect",
+  "Assistant Library/Laboratory Prefect", "Assistant Health Prefect", "Assistant Time Keeper", "Assistant Social Prefect", "Social Prefect",
+  "Publicity Prefect 1", "Publicity Prefect 2",
 ];
 
 export async function GET(request: Request) {
