@@ -78,6 +78,17 @@ export async function POST(request: Request) {
         comment: marked ? s?.comment ?? null : null,
       };
     });
+
+    // Arrange by deadline: to-do and submitted first (nearest deadline on top, no deadline last),
+    // then marked and closed ones (most recent deadline first)
+    const rank: Record<string, number> = { open: 0, submitted: 1, marked: 2, closed: 3 };
+    const when = (s: string | null, none: number) => (s ? new Date(s).getTime() : none);
+    items.sort((x, y) => {
+      if (rank[x.state] !== rank[y.state]) return rank[x.state] - rank[y.state];
+      if (x.state === "marked" || x.state === "closed") return when(y.dueAt, 0) - when(x.dueAt, 0);
+      return when(x.dueAt, Number.MAX_SAFE_INTEGER) - when(y.dueAt, Number.MAX_SAFE_INTEGER);
+    });
+
     return NextResponse.json({ status: "ok", student: { name: me.o_name, className: me.o_class_name }, items });
   }
 

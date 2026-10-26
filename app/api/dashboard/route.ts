@@ -77,6 +77,9 @@ export async function POST(request: Request) {
     if ((subs ?? []).some((s) => s.assignment_id === a.id)) return false;
     return !(a.due_at && new Date(a.due_at).getTime() < now);
   });
+  // Nearest deadline first; no deadline goes last
+  const dueMs = (d: string | null) => (d ? new Date(d).getTime() : Number.MAX_SAFE_INTEGER);
+  const todoByDeadline = [...todo].sort((x, y) => dueMs(x.due_at) - dueMs(y.due_at));
   const markedCount = (subs ?? []).filter((s) => s.score !== null && s.score !== undefined).length;
 
   const ids = [loginId];
@@ -132,7 +135,7 @@ export async function POST(request: Request) {
     assignments: {
       todoCount: todo.length,
       markedCount,
-      items: todo.slice(0, 5).map((a) => ({ title: a.title, subject: sname(a.subject_id), dueAt: a.due_at })),
+      items: todoByDeadline.slice(0, 20).map((a) => ({ title: a.title, subject: sname(a.subject_id), dueAt: a.due_at })),
     },
     results: {
       count: (res ?? []).length,

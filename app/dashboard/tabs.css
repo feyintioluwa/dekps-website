@@ -1,0 +1,25 @@
+/* Student dashboard: tabs, tiles, bars */
+.dt-body{padding-bottom:92px}
+.dt-tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:#fff;border-top:1px solid #dfe4ea;padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -4px 16px rgba(7,31,61,.08)}
+.dt-tab{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;padding:6px 2px;font:inherit;font-size:.7rem;color:#687385;cursor:pointer;position:relative;border-radius:10px}
+.dt-tab .ic{font-size:1.25rem;line-height:1}
+.dt-tab.on{color:#071f3d;font-weight:700;background:#eef3fa}
+.dt-badge{position:absolute;top:0;left:calc(50% + 4px);min-width:18px;height:18px;border-radius:9px;background:#c62828;color:#fff;font-size:.68rem;font-weight:700;display:grid;place-items:center;padding:0 5px}
+.dt-tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:0 0 14px}
+.dt-tile{background:#fff;border:1px solid #e3e8ef;border-radius:14px;padding:14px;text-align:left;font:inherit;cursor:pointer;color:#18212f}
+.dt-tile strong{display:block;font-size:1.45rem;color:#071f3d;line-height:1.15}
+.dt-tile small{color:#687385;font-size:.82rem}
+.dt-tile:active{background:#f4f7fb}
+.dt-bar{height:14px;border-radius:7px;background:#e8edf4;overflow:hidden;margin-top:4px}
+.dt-bar i{display:block;height:100%;background:#1e5c98;border-radius:7px}
+.dt-chip{display:inline-block;padding:6px 12px;border-radius:999px;font-size:.88rem;font-weight:500;margin:0 8px 8px 0}
+.dt-row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid #eef1f5}
+.dt-row:first-of-type{border-top:0}
+.dt-soon{color:#c62828;font-weight:600}
+@media(min-width:760px){
+  .dt-body{padding-bottom:24px}
+  .dt-tabs{position:static;margin:0 0 14px;border:1px solid #dfe4ea;border-radius:14px;padding:6px;box-shadow:none}
+  .dt-tab{flex-direction:row;justify-content:center;gap:8px;font-size:.92rem;padding:10px}
+  .dt-badge{position:static;margin-left:2px}
+  .dt-tiles{grid-template-columns:repeat(4,1fr)}
+}
