@@ -26,7 +26,8 @@ export default function AdminAssignments() {
   const [terms, setTerms] = useState<Record<string, unknown>[] | null>(null);
   const [list, setList] = useState<Asg[]>([]);
   const [msg, setMsg] = useState("");
-  const [f, setF] = useState({ termId: "", classId: "", subjectId: "", title: "", instructions: "", maxScore: "10", dueAt: "" });
+  const [f, setF] = useState({ termId: "", subjectId: "", title: "", instructions: "", maxScore: "10", dueAt: "" });
+  const [classIds, setClassIds] = useState<string[]>([]);
   const [sel, setSel] = useState("");
   const [subs, setSubs] = useState<Sub[]>([]);
   const [edit, setEdit] = useState<Record<string, { score: string; comment: string }>>({});
@@ -51,17 +52,25 @@ export default function AdminAssignments() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  function toggleClass(id: string) {
+    setClassIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+    setF((p) => ({ ...p, subjectId: "" }));
+  }
+
   async function create() {
     try {
       setMsg("Creating...");
       const d = await post({
-        action: "create", ...f,
+        action: "createMany", ...f, classIds,
         dueAt: f.dueAt ? new Date(f.dueAt).toISOString() : null,
       });
       await load();
-      setSel(d.id); setSubs([]);
+      setSel(d.ids[0]); setSubs([]);
       setF({ ...f, title: "", instructions: "", dueAt: "" });
-      setMsg("Created as a draft. Press Publish when students should see it.");
+      setMsg(
+        `Created for ${d.ids.length} class${d.ids.length === 1 ? "" : "es"} as drafts. Publish each one from Manage when students should see it.` +
+        (d.skipped?.length ? ` Skipped (they do not take this subject): ${d.skipped.join(", ")}.` : "")
+      );
     } catch (e) { setMsg("Could not create: " + (e as Error).message); }
   }
   async function publish(v: boolean) {
@@ -120,11 +129,13 @@ export default function AdminAssignments() {
     }
   }
 
-  const classSubjects = subjects.filter((s) => links.some((l) => l.class_id === f.classId && l.subject_id === s.id));
+  // Subjects taken by at least one ticked class (the server skips ticked classes that don't take it)
+  const classSubjects = subjects.filter((s) => links.some((l) => classIds.includes(l.class_id) && l.subject_id === s.id));
   const cur = list.find((a) => a.id === sel);
   const termLabel = (t: Record<string, unknown>) =>
     t.term && t.session ? `${t.term} — ${t.session}` : String(t.name ?? t.term ?? t.label ?? t.id);
   const labelStyle = { display: "block", fontSize: ".85rem", color: "#687385", marginBottom: 4 } as const;
+  const chk = { width: "auto", marginRight: 8 } as const;
 
   return (
     <div className="adm">
@@ -142,12 +153,25 @@ export default function AdminAssignments() {
           ) : (
             <input placeholder="Term ID (uuid)" value={f.termId} onChange={(e) => setF({ ...f, termId: e.target.value })} />
           )}
-          <select value={f.classId} onChange={(e) => setF({ ...f, classId: e.target.value, subjectId: "" })}>
-            <option value="">Select class</option>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+
+          <label style={labelStyle}>Classes (tick one or more)</label>
+          <div style={{ border: "1px solid #dfe4ea", borderRadius: 10, padding: 12, marginBottom: 10 }}>
+            <div className="adm-row" style={{ marginBottom: 8 }}>
+              <button type="button" onClick={() => { setClassIds(classes.map((c) => c.id)); setF({ ...f, subjectId: "" }); }}>Select all</button>
+              <button type="button" onClick={() => { setClassIds([]); setF({ ...f, subjectId: "" }); }}>Clear</button>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
+              {classes.map((c) => (
+                <label key={c.id} style={{ display: "flex", alignItems: "center" }}>
+                  <input type="checkbox" style={chk} checked={classIds.includes(c.id)} onChange={() => toggleClass(c.id)} />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+          </div>
+
           <select value={f.subjectId} onChange={(e) => setF({ ...f, subjectId: e.target.value })}>
-            <option value="">{!f.classId ? "Select class first" : classSubjects.length ? "Select subject" : "No subjects set for this class"}</option>
+            <option value="">{!classIds.length ? "Tick a class first" : classSubjects.length ? "Select subject" : "No subjects set for these classes"}</option>
             {classSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <input placeholder="Title e.g. Assignment 1: Plant parts" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
@@ -162,7 +186,9 @@ export default function AdminAssignments() {
               <input type="datetime-local" value={f.dueAt} onChange={(e) => setF({ ...f, dueAt: e.target.value })} />
             </div>
           </div>
-          <button disabled={!f.termId || !f.classId || !f.subjectId || !f.title.trim()} onClick={create}>Create</button>
+          <button disabled={!f.termId || !classIds.length || !f.subjectId || !f.title.trim()} onClick={create}>
+            {classIds.length > 1 ? `Create for ${classIds.length} classes` : "Create"}
+          </button>
 
           <h2>2. Manage</h2>
           <select value={sel} onChange={(e) => { setSel(e.target.value); setSubs([]); }}>

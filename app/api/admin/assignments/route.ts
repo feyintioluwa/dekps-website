@@ -31,6 +31,32 @@ export async function POST(request: Request) {
   if (!b) return NextResponse.json({ error: "Bad request" }, { status: 400 });
   const fail = (m: string, s = 500) => NextResponse.json({ error: m }, { status: s });
 
+  // One assignment (a separate copy) for every ticked class that takes the subject
+  if (b.action === "createMany") {
+    const title = String(b.title ?? "").trim();
+    if (!title) return fail("Enter a title", 400);
+    const classIds = ((b.classIds ?? []) as string[]).map(String);
+    if (!b.termId || !b.subjectId || !classIds.length) return fail("Choose a term, at least one class and a subject", 400);
+    const max = Number(b.maxScore);
+    const maxScore = Number.isInteger(max) && max >= 1 && max <= 100 ? max : 10;
+    const { data: lk } = await sb.from("class_subjects").select("class_id").eq("subject_id", b.subjectId).in("class_id", classIds);
+    const ok = new Set((lk ?? []).map((r) => String(r.class_id)));
+    const good = classIds.filter((id) => ok.has(id));
+    const skipIds = classIds.filter((id) => !ok.has(id));
+    if (!good.length) return fail("None of the ticked classes take that subject", 400);
+    const rows = good.map((class_id) => ({
+      term_id: b.termId, class_id, subject_id: b.subjectId,
+      title, instructions: String(b.instructions ?? "").trim() || null,
+      max_score: maxScore, due_at: b.dueAt || null, is_published: false,
+    }));
+    const { data, error } = await sb.from("assignments").insert(rows).select("id");
+    if (error) return fail(error.message);
+    const { data: cl } = skipIds.length
+      ? await sb.from("classes").select("id, name").in("id", skipIds)
+      : { data: [] as { id: string; name: string }[] };
+    return NextResponse.json({ ok: true, ids: (data ?? []).map((r) => r.id), skipped: (cl ?? []).map((x) => x.name) });
+  }
+
   if (b.action === "create") {
     const title = String(b.title ?? "").trim();
     if (!title) return fail("Enter a title", 400);
