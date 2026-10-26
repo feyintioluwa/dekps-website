@@ -27,6 +27,13 @@ export async function POST(request: Request) {
 
   const { data: cur } = await sb.from("terms").select("term, session").eq("is_active", true).maybeSingle();
 
+  // Prefect role for the current session (none if the student has no role)
+  let prefect: { role: string; session: string } | null = null;
+  if (cur?.session) {
+    const { data: pf } = await sb.from("prefects").select("role").eq("student_id", studentId).eq("session", cur.session).maybeSingle();
+    if (pf?.role) prefect = { role: pf.role, session: cur.session };
+  }
+
   // Notices for this student's class (or all classes) that have not expired, newest first
   const nowIso = new Date(now).toISOString();
   const { data: nts } = await sb.from("notices")
@@ -112,7 +119,8 @@ export async function POST(request: Request) {
   const latest = res?.[0];
   return NextResponse.json({
     status: "ok",
-    student: { name: me.o_name, className: me.o_class_name },
+    student: { name: me.o_name, className: me.o_class_name, loginId },
+    prefect,
     term: cur ? { term: cur.term, session: cur.session } : null,
     notices: (nts ?? []).map((x) => ({ id: x.id, title: x.title, body: x.body, postedAt: x.created_at })),
     subjects: subjectList,
