@@ -63,6 +63,18 @@ function tone(score: number, max: number) {
   return { c: "#c62828", bg: "#fdeaea" };
 }
 
+function Icon({ name }: { name: Tab }) {
+  const p = {
+    width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+    strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true,
+  };
+  if (name === "home") return <svg {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></svg>;
+  if (name === "assignments") return <svg {...p}><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4h6v3H9z" /><path d="M9 12h6M9 16h4" /></svg>;
+  if (name === "tests") return <svg {...p}><path d="M4 20l1-4L16 5l3 3L8 19z" /><path d="M14 7l3 3" /></svg>;
+  if (name === "results") return <svg {...p}><path d="M12 3l9 5-9 5-9-5z" /><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5" /></svg>;
+  return <svg {...p}><path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" /></svg>;
+}
+
 export default function Dashboard() {
   const [loginId, setLoginId] = useState("");
   const [pin, setPin] = useState("");
@@ -259,24 +271,50 @@ export default function Dashboard() {
   const r = data.results;
   const testsOpen = access && !access.locked;
   const todo = [...data.assignments.items].sort(byDue);
-  const tabs: { id: Tab; icon: string; label: string; badge?: number }[] = [
-    { id: "home", icon: "🏠", label: "Home" },
-    { id: "assignments", icon: "📋", label: "Assignments", badge: data.assignments.todoCount },
-    { id: "tests", icon: "📝", label: "Tests", badge: testsOpen ? data.tests.count : 0 },
-    { id: "results", icon: "🎓", label: "Results" },
-    { id: "progress", icon: "📈", label: "Progress" },
+  const tabs: { id: Tab; label: string; badge?: number }[] = [
+    { id: "home", label: "Home" },
+    { id: "assignments", label: "Assignments", badge: data.assignments.todoCount },
+    { id: "tests", label: "Tests", badge: testsOpen ? data.tests.count : 0 },
+    { id: "results", label: "Results" },
+    { id: "progress", label: "Progress" },
   ];
+
+  type Attn = { key: string; tone: "urgent" | "warn" | "good"; title: string; sub: string; label: string; to: Tab };
+  const attention: Attn[] = [];
+  if (data.tests.count > 0) {
+    attention.push(
+      testsOpen
+        ? { key: "t", tone: "warn", title: `Tests & exams open now (${data.tests.count})`, sub: "Open the Tests tab to start", label: "Start", to: "tests" }
+        : { key: "t", tone: "warn", title: "Tests & exams are locked", sub: "Enter the code from your teacher", label: "Enter code", to: "tests" }
+    );
+  }
+  todo.slice(0, 3).forEach((a, i) => {
+    const c = a.dueAt ? countdown(a.dueAt) : null;
+    attention.push({
+      key: `a${i}`,
+      tone: c?.soon ? "urgent" : "warn",
+      title: `${a.subject}: ${a.title}`,
+      sub: c ? `Due ${c.text}` : "No deadline",
+      label: "Open",
+      to: "assignments",
+    });
+  });
+  if (r.count > 0) {
+    attention.push({ key: "r", tone: "good", title: "Your results are ready", sub: r.latest ?? "", label: "View", to: "results" });
+  }
 
   return (
     <div className="cbt">
       {header}
-      <div className="cbt-wrap">
+      <div className="cbt-wrap dt-wrap">
         <nav className="dt-tabs" aria-label="Dashboard sections">
           {tabs.map((t) => (
             <button key={t.id} className={`dt-tab${tab === t.id ? " on" : ""}`} onClick={() => go(t.id)} aria-current={tab === t.id ? "page" : undefined}>
-              <span className="ic" aria-hidden="true">{t.icon}</span>
-              {t.label}
-              {t.badge ? <span className="dt-badge">{t.badge}</span> : null}
+              <span className="dt-ic">
+                <Icon name={t.id} />
+                {t.badge ? <span className="dt-badge">{t.badge}</span> : null}
+              </span>
+              <span className="dt-lb">{t.label}</span>
             </button>
           ))}
         </nav>
@@ -305,19 +343,21 @@ export default function Dashboard() {
               </div>
               {data.term && <p style={{ margin: "0 0 14px", color: "#687385" }}>Current term: {data.term.term} — {data.term.session}</p>}
 
-              <div className="dt-tiles">
-                <button className="dt-tile" onClick={() => go("assignments")}>
-                  <strong>{data.assignments.todoCount}</strong><small>assignment{data.assignments.todoCount === 1 ? "" : "s"} to do</small>
-                </button>
-                <button className="dt-tile" onClick={() => go("tests")}>
-                  <strong>{testsOpen ? data.tests.count : "Locked"}</strong><small>{testsOpen ? "tests & exams open" : "tests & exams"}</small>
-                </button>
-                <button className="dt-tile" onClick={() => go("results")}>
-                  <strong>{r.count > 0 ? (r.grade ? `Grade ${r.grade}` : "Ready") : "None yet"}</strong><small>results</small>
-                </button>
-                <button className="dt-tile" onClick={() => go("progress")}>
-                  <strong>View</strong><small>my progress</small>
-                </button>
+              <h3 className="dt-h">What needs your attention</h3>
+              <div className="dt-todo">
+                {attention.length > 0 ? (
+                  attention.map((a) => (
+                    <div key={a.key} className={`dt-item ${a.tone}`}>
+                      <div className="dt-item-main">
+                        <strong>{a.title}</strong>
+                        {a.sub && <small>{a.sub}</small>}
+                      </div>
+                      <button className="dt-act" onClick={() => go(a.to)}>{a.label}</button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="dt-clear">You&apos;re all caught up</div>
+                )}
               </div>
 
               {data.notices && data.notices.length > 0 && (
@@ -333,25 +373,20 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <div className="cbt-card">
-                <span className="cbt-tag">Coming up</span>
-                {data.soon && data.soon.length > 0 ? (
-                  <>
-                    <h3 style={{ marginTop: 6 }}>Next on your list</h3>
-                    {data.soon.slice(0, 3).map((s, i) => {
-                      const c = countdown(s.at);
-                      return (
-                        <p key={i} style={{ color: "#687385", fontSize: ".9rem", margin: "6px 0" }}>
-                          <strong style={{ color: "#071f3d" }}>{s.subject ? `${s.subject}: ` : ""}{s.kind === "assignment" ? s.title : kindName[s.kind]}</strong>
-                          {" "}· <span className={c.soon ? "dt-soon" : undefined}>{whenWord[s.label]} {c.text}</span>
-                        </p>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <h3 style={{ marginTop: 6 }}>Nothing coming up</h3>
-                )}
-              </div>
+              {data.soon && data.soon.filter((s) => s.kind !== "assignment").length > 0 && (
+                <div className="cbt-card">
+                  <span className="cbt-tag">Coming up</span>
+                  {data.soon.filter((s) => s.kind !== "assignment").slice(0, 3).map((s, i) => {
+                    const c = countdown(s.at);
+                    return (
+                      <p key={i} style={{ color: "#687385", fontSize: ".9rem", margin: "8px 0" }}>
+                        <strong style={{ color: "#071f3d" }}>{s.subject ? `${s.subject}: ` : ""}{kindName[s.kind]}</strong>
+                        {" "}· <span className={c.soon ? "dt-soon" : undefined}>{whenWord[s.label]} {c.text}</span>
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 <button className="cbt-btn alt" onClick={logout}>Log out</button>
