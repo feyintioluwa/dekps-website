@@ -16,6 +16,7 @@ type Sub = {
   files: { name: string; type: string; url: string }[];
   submittedAt: string | null; score: number | null; comment: string | null;
 };
+type Filter = "submitted" | "tomark" | "unsub" | "all";
 
 export default function AdminAssignments() {
   const key = useAdminKey();
@@ -28,8 +29,12 @@ export default function AdminAssignments() {
   const [msg, setMsg] = useState("");
   const [f, setF] = useState({ termId: "", subjectId: "", title: "", instructions: "", maxScore: "10", dueAt: "" });
   const [classIds, setClassIds] = useState<string[]>([]);
+  const [viewClass, setViewClass] = useState("");
   const [sel, setSel] = useState("");
   const [subs, setSubs] = useState<Sub[]>([]);
+  const [filter, setFilter] = useState<Filter>("submitted");
+  const [loadingSubs, setLoadingSubs] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
   const [edit, setEdit] = useState<Record<string, { score: string; comment: string }>>({});
   const [saved, setSaved] = useState<Record<string, { ok: boolean; text: string }>>({});
 
@@ -106,36 +111,77 @@ export default function AdminAssignments() {
       load();
     } catch (e) { setMsg((e as Error).message); }
   }
-  async function loadSubs() {
+
+  // Loads the submissions of an assignment (called automatically when you pick one)
+  async function loadSubs(id: string = sel) {
+    if (!id) return;
+    setLoadingSubs(true);
     try {
-      const d = await post({ action: "submissions", assignmentId: sel });
+      const d = await post({ action: "submissions", assignmentId: id });
       setSubs(d.rows);
       const m: Record<string, { score: string; comment: string }> = {};
       for (const r of d.rows as Sub[]) m[r.studentId] = { score: r.score === null ? "" : String(r.score), comment: r.comment ?? "" };
       setEdit(m);
-      const n = (d.rows as Sub[]).filter((r) => r.submittedAt).length;
-      setMsg(`${n} of ${d.rows.length} students have submitted.`);
+      setSaved({});
     } catch (e) { setMsg((e as Error).message); }
+    finally { setLoadingSubs(false); }
   }
-  async function mark(studentId: string) {
+
+  // Saves one student's mark; returns true if it worked
+  async function saveOne(studentId: string): Promise<boolean> {
+    const e = edit[studentId] ?? { score: "", comment: "" };
+    setSaved((s) => ({ ...s, [studentId]: { ok: true, text: "Saving..." } }));
     try {
-      const e = edit[studentId] ?? { score: "", comment: "" };
-      setSaved((s) => ({ ...s, [studentId]: { ok: true, text: "Saving..." } }));
       await post({ action: "mark", assignmentId: sel, studentId, score: e.score, comment: e.comment });
       const max = cur?.max_score ?? "";
-      setSaved((s) => ({ ...s, [studentId]: { ok: true, text: e.score === "" ? "Saved (no mark)" : `Saved: ${e.score}/${max}` } }));
+      setSaved((s) => ({ ...s, [studentId]: { ok: true, text: e.score.trim() === "" ? "Saved (no mark)" : `Saved: ${e.score}/${max}` } }));
+      setSubs((p) => p.map((r) => (r.studentId === studentId
+        ? { ...r, score: e.score.trim() === "" ? null : Number(e.score), comment: e.comment.trim() || null }
+        : r)));
+      return true;
     } catch (er) {
       setSaved((s) => ({ ...s, [studentId]: { ok: false, text: (er as Error).message } }));
+      return false;
     }
+  }
+
+  // Saves every student whose mark or comment was changed
+  async function saveAll() {
+    setMsg(""); setSavingAll(true);
+    let ok = 0, bad = 0;
+    for (const r of changed) { if (await saveOne(r.studentId)) ok++; else bad++; }
+    setSavingAll(false);
+    setMsg(`${ok} saved.${bad ? ` ${bad} could not be saved: see the red messages.` : ""}`);
+  }
+
+  // After Enter in a mark box, jump to the next student's mark box
+  function focusNext(el: HTMLInputElement) {
+    const all = Array.from(document.querySelectorAll<HTMLInputElement>("input[data-mark]"));
+    const i = all.indexOf(el);
+    if (i >= 0 && all[i + 1]) all[i + 1].focus();
   }
 
   // Subjects taken by at least one ticked class (the server skips ticked classes that don't take it)
   const classSubjects = subjects.filter((s) => links.some((l) => classIds.includes(l.class_id) && l.subject_id === s.id));
   const cur = list.find((a) => a.id === sel);
+  const visible = list.filter((a) => !viewClass || a.class_id === viewClass);
+  const submittedN = subs.filter((r) => r.submittedAt).length;
+  const markedN = subs.filter((r) => r.submittedAt && r.score !== null).length;
+  const toMarkN = submittedN - markedN;
+  const notN = subs.length - submittedN;
+  const shown = subs.filter((r) =>
+    filter === "all" ? true
+      : filter === "submitted" ? !!r.submittedAt
+      : filter === "tomark" ? !!r.submittedAt && r.score === null
+      : !r.submittedAt);
+  const changed = subs.filter((r) => r.submittedAt && (
+    (edit[r.studentId]?.score ?? "") !== (r.score === null ? "" : String(r.score)) ||
+    (edit[r.studentId]?.comment ?? "") !== (r.comment ?? "")));
   const termLabel = (t: Record<string, unknown>) =>
     t.term && t.session ? `${t.term} — ${t.session}` : String(t.name ?? t.term ?? t.label ?? t.id);
   const labelStyle = { display: "block", fontSize: ".85rem", color: "#687385", marginBottom: 4 } as const;
   const chk = { width: "auto", marginRight: 8 } as const;
+  const tab = (on: boolean) => (on ? { background: "#071f3d" } : { background: "#e3e8ef", color: "#071f3d" });
 
   return (
     <div className="adm">
@@ -191,11 +237,23 @@ export default function AdminAssignments() {
           </button>
 
           <h2>2. Manage</h2>
-          <select value={sel} onChange={(e) => { setSel(e.target.value); setSubs([]); }}>
-            <option value="">Select an assignment</option>
-            {list.map((a) => (
+          <label style={labelStyle}>Class</label>
+          <select value={viewClass} onChange={(e) => { setViewClass(e.target.value); setSel(""); setSubs([]); }}>
+            <option value="">All classes</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select
+            value={sel}
+            onChange={(e) => {
+              const id = e.target.value;
+              setSel(id); setSubs([]); setFilter("submitted"); setMsg("");
+              if (id) loadSubs(id);
+            }}
+          >
+            <option value="">{viewClass && visible.length === 0 ? "No assignments for this class yet" : "Select an assignment"}</option>
+            {visible.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.title} · {name(classes, a.class_id)} · {name(subjects, a.subject_id)} {a.is_published ? "(published)" : "(draft)"}
+                {a.title} · {viewClass ? "" : name(classes, a.class_id) + " · "}{name(subjects, a.subject_id)} {a.is_published ? "(published)" : "(draft)"}
               </option>
             ))}
           </select>
@@ -203,17 +261,39 @@ export default function AdminAssignments() {
           {cur && (
             <>
               <p style={{ fontSize: ".85rem", color: "#687385" }}>
-                Out of {cur.max_score}.{cur.due_at ? ` Deadline: ${new Date(cur.due_at).toLocaleString()}.` : " No deadline."}
+                {name(classes, cur.class_id)} · Out of {cur.max_score}.{cur.due_at ? ` Deadline: ${new Date(cur.due_at).toLocaleString()}.` : " No deadline."}
               </p>
               {cur.instructions && <p style={{ whiteSpace: "pre-wrap" }}>{cur.instructions}</p>}
               <div className="adm-row" style={{ margin: "8px 0" }}>
                 <button onClick={() => publish(!cur.is_published)}>{cur.is_published ? "Unpublish" : "Publish"}</button>
-                <button onClick={loadSubs}>View submissions &amp; mark</button>
+                <button onClick={() => loadSubs()}>Refresh submissions</button>
                 <button disabled={cur.is_published} onClick={remove}>Delete</button>
                 <button style={{ background: "#9e1824" }} disabled={cur.is_published} onClick={removeAll}>Delete with student work</button>
               </div>
 
-              {subs.length > 0 && subs.map((r) => (
+              {loadingSubs && <p>Loading submissions…</p>}
+
+              {!loadingSubs && subs.length > 0 && (
+                <>
+                  <p style={{ fontWeight: 600, margin: "8px 0" }}>
+                    {submittedN} of {subs.length} submitted · {markedN} marked · {toMarkN} still to mark
+                  </p>
+                  <div className="adm-row" style={{ margin: "6px 0" }}>
+                    <button style={tab(filter === "submitted")} onClick={() => setFilter("submitted")}>Submitted ({submittedN})</button>
+                    <button style={tab(filter === "tomark")} onClick={() => setFilter("tomark")}>To mark ({toMarkN})</button>
+                    <button style={tab(filter === "unsub")} onClick={() => setFilter("unsub")}>Not submitted ({notN})</button>
+                    <button style={tab(filter === "all")} onClick={() => setFilter("all")}>All ({subs.length})</button>
+                  </div>
+                  {changed.length > 0 && (
+                    <button disabled={savingAll} onClick={saveAll}>
+                      {savingAll ? "Saving..." : `Save all changes (${changed.length})`}
+                    </button>
+                  )}
+                  {shown.length === 0 && <p>No students in this view.</p>}
+                </>
+              )}
+
+              {!loadingSubs && shown.map((r) => (
                 <div key={r.studentId} style={{ border: "1px solid #e3e8ef", borderRadius: 8, padding: 10, marginBottom: 10 }}>
                   <strong>{r.name}</strong> <span style={{ color: "#687385", fontSize: ".85rem" }}>{r.loginId}</span>
                   <div style={{ fontSize: ".85rem", color: r.submittedAt ? "#1a7f4b" : "#a33" }}>
@@ -232,13 +312,17 @@ export default function AdminAssignments() {
                         </div>
                       )}
                       <div className="adm-row">
-                        <input placeholder={`Mark /${cur.max_score}`} style={{ maxWidth: 110 }}
+                        <input data-mark="1" placeholder={`Mark /${cur.max_score}`} style={{ maxWidth: 110 }}
                           value={edit[r.studentId]?.score ?? ""}
-                          onChange={(e) => setEdit({ ...edit, [r.studentId]: { score: e.target.value, comment: edit[r.studentId]?.comment ?? "" } })} />
+                          onChange={(e) => setEdit({ ...edit, [r.studentId]: { score: e.target.value, comment: edit[r.studentId]?.comment ?? "" } })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); const el = e.currentTarget; void saveOne(r.studentId); focusNext(el); }
+                          }} />
                         <input placeholder="Comment (optional)"
                           value={edit[r.studentId]?.comment ?? ""}
-                          onChange={(e) => setEdit({ ...edit, [r.studentId]: { score: edit[r.studentId]?.score ?? "", comment: e.target.value } })} />
-                        <button onClick={() => mark(r.studentId)}>Save mark</button>
+                          onChange={(e) => setEdit({ ...edit, [r.studentId]: { score: edit[r.studentId]?.score ?? "", comment: e.target.value } })}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void saveOne(r.studentId); } }} />
+                        <button onClick={() => saveOne(r.studentId)}>Save mark</button>
                       </div>
                       {saved[r.studentId] && (
                         <div style={{ marginTop: 6, fontWeight: 600, color: saved[r.studentId].ok ? "#1a7f4b" : "#c62828" }}>
@@ -249,6 +333,12 @@ export default function AdminAssignments() {
                   )}
                 </div>
               ))}
+
+              {!loadingSubs && changed.length > 0 && shown.length > 4 && (
+                <button disabled={savingAll} onClick={saveAll}>
+                  {savingAll ? "Saving..." : `Save all changes (${changed.length})`}
+                </button>
+              )}
             </>
           )}
         </>
