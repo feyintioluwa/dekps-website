@@ -55,7 +55,7 @@ export default function Broadsheet() {
     return mine.length === 0 || mine.some((x) => x.subject_id === subId);
   };
 
-  // ---------- Template: same layout as the school's broadsheet ----------
+  // ---------- Template: CA (out of 40) and Exam (out of 60) for every subject ----------
   async function template() {
     if (!termId) return setMsg("Choose the term first.");
     setBusy(true); setMsg("Preparing template…");
@@ -66,43 +66,27 @@ export default function Broadsheet() {
       if (!d) { setBusy(false); return; }
       if (!d.students.length || !d.subjects.length) continue;
 
-      // Row 1: Subject + each subject name (merged over 3 columns)
-      // Row 2: Name/Score + 40, 60, 100 under every subject
+      // Row 1: Subject + each subject name (merged over 2 columns)
+      // Row 2: Name/Score + 40 and 60 under every subject
       const top: (string | number)[] = ["Subject"];
       const max: (string | number)[] = ["Name/Score"];
-      d.subjects.forEach((s) => { top.push(s.name, "", ""); max.push(40, 60, 100); });
+      d.subjects.forEach((s) => { top.push(s.name, ""); max.push(40, 60); });
       const aoa: (string | number)[][] = [top, max];
 
       d.students.forEach((st) => {
         const line: (string | number)[] = [st.name];
         d.subjects.forEach((s) => {
-          if (!allowed(d, st, s.id)) { line.push("", "", ""); return; }
+          if (!allowed(d, st, s.id)) { line.push("", ""); return; }
           const g = (k: string) => d.scores.find((x) => x.student_id === st.id && x.subject_id === s.id && x.kind === k)?.score ?? "";
-          line.push(g("ca"), g("exam"), "");
+          line.push(g("ca"), g("exam"));
         });
         aoa.push(line);
       });
 
       const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: d.subjects.length * 3 } });
-      ws["!merges"] = d.subjects.map((_, j) => ({ s: { r: 0, c: 1 + j * 3 }, e: { r: 0, c: 3 + j * 3 } }));
-      ws["!cols"] = [{ wch: 30 }, ...d.subjects.flatMap(() => [{ wch: 7 }, { wch: 7 }, { wch: 7 }])];
-
-      // Total column = CA + Exam (a formula, like the school's sheet)
-      d.students.forEach((st, i) => {
-        const excelRow = i + 3;
-        d.subjects.forEach((s, j) => {
-          if (!allowed(d, st, s.id)) return;
-          const ca = 1 + j * 3, ex = ca + 1, tot = ca + 2;
-          const caRef = XLSX.utils.encode_cell({ r: excelRow - 1, c: ca });
-          const exRef = XLSX.utils.encode_cell({ r: excelRow - 1, c: ex });
-          const caVal = aoa[i + 2][ca], exVal = aoa[i + 2][ex];
-          const has = caVal !== "" || exVal !== "";
-          ws[XLSX.utils.encode_cell({ r: excelRow - 1, c: tot })] = has
-            ? { t: "n", f: `SUM(${caRef}:${exRef})`, v: Number(caVal || 0) + Number(exVal || 0) }
-            : { t: "s", f: `IF(COUNT(${caRef}:${exRef})=0,"",SUM(${caRef}:${exRef}))`, v: "" };
-        });
-      });
+      ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: d.subjects.length * 2 } });
+      ws["!merges"] = d.subjects.map((_, j) => ({ s: { r: 0, c: 1 + j * 2 }, e: { r: 0, c: 2 + j * 2 } }));
+      ws["!cols"] = [{ wch: 30 }, ...d.subjects.flatMap(() => [{ wch: 7 }, { wch: 7 }])];
 
       XLSX.utils.book_append_sheet(wb, ws, c.name.slice(0, 31));
       sheets++;
@@ -111,10 +95,10 @@ export default function Broadsheet() {
     if (!sheets) return setMsg("No students or subjects found to put in the template.");
     const label = classId === "all" ? "All-Classes" : targets()[0]?.name ?? "Class";
     XLSX.writeFile(wb, `${label}-broadsheet.xlsx`);
-    setMsg(`Template downloaded (${sheets} sheet${sheets > 1 ? "s" : ""}). Fill CA and Exam (blank = no score); Total is worked out for you. Do not change student names, subject headings or tab names.`);
+    setMsg(`Template downloaded (${sheets} sheet${sheets > 1 ? "s" : ""}). Fill CA and Exam (blank = no score). Totals are worked out when you publish. Do not change student names, subject headings or tab names.`);
   }
 
-  // ---------- Upload: reads the school's layout ----------
+  // ---------- Upload: reads CA/Exam pairs under each subject heading ----------
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
