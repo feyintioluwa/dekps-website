@@ -12,6 +12,53 @@ export async function GET(request: Request) {
   const classId = u.searchParams.get("classId");
   const termId = u.searchParams.get("termId");
 
+  // ---------- Backup: every score of one term, with names ----------
+  if (u.searchParams.get("export") === "1") {
+    if (!termId) return NextResponse.json({ error: "Choose a term" }, { status: 400 });
+
+    const scores: { student_id: string; subject_id: string; class_id: string; kind: string; score: number; source: string | null; updated_at: string | null }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from("scores")
+        .select("student_id, subject_id, class_id, kind, score, source, updated_at")
+        .eq("term_id", termId).order("id").range(from, from + 999);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      scores.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+
+    const students: { id: string; login_id: string; name: string }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from("students").select("id, login_id, name").order("id").range(from, from + 999);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      students.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+
+    const [classes, subjects] = await Promise.all([
+      sb.from("classes").select("id, name, sort_order"),
+      sb.from("subjects").select("id, name"),
+    ]);
+    const stu = new Map(students.map((s) => [s.id, s]));
+    const cls = new Map((classes.data ?? []).map((x) => [x.id, x]));
+    const sub = new Map((subjects.data ?? []).map((x) => [x.id, x.name as string]));
+
+    const rows = scores
+      .map((x) => ({
+        order: cls.get(x.class_id)?.sort_order ?? 0,
+        cls: (cls.get(x.class_id)?.name as string) ?? "",
+        loginId: stu.get(x.student_id)?.login_id ?? "",
+        name: stu.get(x.student_id)?.name ?? "",
+        subject: sub.get(x.subject_id) ?? "",
+        type: x.kind === "test1" ? "CA" : "Exam",
+        score: x.score,
+        source: x.source ?? "",
+        updated: x.updated_at ?? "",
+      }))
+      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name) || a.subject.localeCompare(b.subject) || a.type.localeCompare(b.type))
+      .map((x) => ({ cls: x.cls, loginId: x.loginId, name: x.name, subject: x.subject, type: x.type, score: x.score, source: x.source, updated: x.updated }));
+    return NextResponse.json({ rows });
+  }
+
   if (!classId) {
     const [classes, terms] = await Promise.all([
       sb.from("classes").select("id, name").order("sort_order"),

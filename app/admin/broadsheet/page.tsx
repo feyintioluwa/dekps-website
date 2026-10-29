@@ -229,6 +229,35 @@ export default function Broadsheet() {
     } catch (e) { setMsg((e as Error).message); }
     setBusy(false);
   }
+  // ---------- Backup: every saved score for the chosen term, all classes ----------
+  async function backup() {
+    if (!termId) return setMsg("Choose the term first.");
+    setBusy(true); setMsg("Preparing backup…");
+    try {
+      const r = await fetch(`/api/admin/broadsheet?export=1&termId=${termId}`, { headers: h });
+      const d = await r.json();
+      if (!r.ok) { setMsg(d.error || "Could not prepare the backup."); setBusy(false); return; }
+      const term = terms?.find((t) => String(t.id) === termId);
+      const termName = term ? label(term) : termId;
+      const head = ["Class", "Login ID", "Name", "Subject", "Type", "Score", "Source", "Last updated"];
+      const lines = (d.rows as { cls: string; loginId: string; name: string; subject: string; type: string; score: number; source: string; updated: string }[]).map((x) => [
+        x.cls, x.loginId, x.name, x.subject, x.type, x.score, x.source, x.updated ? new Date(x.updated).toLocaleString() : "",
+      ]);
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([head, ...lines]);
+      ws["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 30 }, { wch: 28 }, { wch: 7 }, { wch: 7 }, { wch: 9 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, ws, "Scores");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+        ["Term", termName],
+        ["Exported", new Date().toLocaleString()],
+        ["Scores in this file", lines.length],
+      ]), "Info");
+      const day = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Scores-backup-${termName.replace(/[^A-Za-z0-9]+/g, "-")}-${day}.xlsx`);
+      setMsg(`Backup downloaded: ${lines.length} scores. Keep the file somewhere safe (for example Google Drive or email it to yourself).`);
+    } catch { setMsg("Could not prepare the backup."); }
+    setBusy(false);
+  }
   const label = (t: Record<string, unknown>) =>
     t.term && t.session ? `${t.term} — ${t.session}` : String(t.name ?? t.term ?? t.label ?? t.id);
 
@@ -260,6 +289,9 @@ export default function Broadsheet() {
           <div className="adm-row"><input value={termLabel} onChange={(e) => setTermLabel(e.target.value)} placeholder="Term name e.g. First Term" /><input value={session} onChange={(e) => setSession(e.target.value)} placeholder="Session" /></div>
           <button disabled={busy} onClick={publish}>{classId === "all" ? "Publish all classes" : "Publish this class"}</button>
           <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>Totals, average and grade are computed from CA + Exam. Students with no scores are skipped. Re-publishing updates existing results.</p>
+          <h2>5. Backup</h2>
+          <button disabled={busy} onClick={backup}>Download backup of this term&apos;s scores</button>
+          <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>Saves every CA and Exam score for the chosen term, for all classes, in one Excel file. Do this before a big upload and again before you publish.</p>
         </>
       )}
     </div>
