@@ -2,3 +2,5 @@
 .term-picker label{font-weight:700;color:#071f3d}
 .term-picker select{height:42px;padding:0 12px;border:1px solid #dfe4ea;border-radius:8px;background:#fff;font:inherit;min-width:240px}
 @media print{.term-picker{display:none!important}}
+.signature-img{display:block;margin:0 auto -6px;max-width:160px;max-height:64px;object-fit:contain}
+@media print{.signature-img{max-width:105px!important;max-height:38px!important;margin-bottom:-4px!important}}

@@ -438,7 +438,14 @@ export default function ResultsPage() {
                     Private School academic records for the {student.term} of
                     the {student.session} academic session.
                   </div>
-                  <div className="signature-area">
+                    <div className="signature-area">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/assets/signature.png"
+                      alt="Signature"
+                      className="signature-img"
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
                     <div className="signature-line"></div>
                     <span>Authorized School Official</span>
                   </div>
