@@ -133,9 +133,6 @@ export default function TeacherPage() {
                 <b>{me.teacher.name}</b>
                 <small>{me.teacher.email}</small>
               </span>
-              <a className="tch-btn tch-light" href="/teacher/assignments" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-                Assignments
-              </a>
               <button className="tch-btn tch-light" onClick={signOut}>Log out</button>
             </div>
           )}
