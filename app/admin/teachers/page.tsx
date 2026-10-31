@@ -34,6 +34,7 @@ export default function AdminTeachers() {
   const [moveTo, setMoveTo] = useState("");
   const [pw, setPw] = useState("");
   const [nm, setNm] = useState("");
+  const [em, setEm] = useState("");
 
   const h = { "Content-Type": "application/json", "x-admin-key": key };
 
@@ -87,6 +88,7 @@ export default function AdminTeachers() {
     if (openId === t.id) { setOpenId(""); return; }
     setOpenId(t.id);
     setNm(t.name);
+    setEm(t.email);
     setCtick(new Set(t.classTeacher));
     setStick(new Set(ownedIds(t)));
     setMoveSel(new Set()); setMoveTo(""); setPw("");
@@ -109,6 +111,20 @@ export default function AdminTeachers() {
     }))) return;
     const ok = await act({ action: "resetPassword", id: t.id, password: pw }, "Password changed.");
     if (ok) setPw("");
+  }
+    const TITLES = ["Mr", "Mrs", "Miss"];
+  const titleOf = (n: string) => TITLES.find((x) => n.toLowerCase().startsWith(x.toLowerCase() + " ")) ?? "";
+  function setTitle(v: string) {
+    const rest = nm.replace(/^(mr|mrs|miss|ms)\.?\s+/i, "");
+    setNm(v ? `${v} ${rest}` : rest);
+  }
+  async function changeEmail(t: T) {
+    if (!(await ask({
+      title: "Change email?",
+      message: `${t.name} must use ${em.trim().toLowerCase()} to sign in from now on. Their password stays the same.`,
+      confirmText: "Change email",
+    }))) return;
+    await act({ action: "setEmail", id: t.id, email: em }, "Email changed.");
   }
   async function renameTeacher(t: T) {
     await act({ action: "rename", id: t.id, name: nm }, `Name changed to ${nm.trim()}.`);
@@ -245,8 +261,20 @@ export default function AdminTeachers() {
 
                 <h3 style={{ margin: "16px 0 4px" }}>Name</h3>
                 <div className="adm-row">
+                  <select value={titleOf(nm)} onChange={(e) => setTitle(e.target.value)}>
+                    <option value="">Title</option>
+                    <option>Mr</option>
+                    <option>Mrs</option>
+                    <option>Miss</option>
+                  </select>
                   <input placeholder="e.g. Mr Adewale John" value={nm} onChange={(e) => setNm(e.target.value)} />
                   <button disabled={busy || !nm.trim() || nm.trim() === t.name} onClick={() => renameTeacher(t)}>Save name</button>
+                </div>
+
+                <h3 style={{ margin: "16px 0 4px" }}>Email</h3>
+                <div className="adm-row">
+                  <input type="email" value={em} onChange={(e) => setEm(e.target.value)} />
+                  <button disabled={busy || !em.trim() || em.trim().toLowerCase() === t.email} onClick={() => changeEmail(t)}>Save email</button>
                 </div>
 
                 <h3 style={{ margin: "16px 0 4px" }}>Password</h3>

@@ -83,6 +83,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+    // ---------- change a teacher's sign-in email ----------
+  if (b.action === "setEmail") {
+    const email = String(b.email ?? "").trim().toLowerCase();
+    if (!b.id) return fail("Missing teacher", 400);
+    if (!EMAIL.test(email)) return fail("Enter a valid email address", 400);
+
+    const { data: dup } = await sb.from("teachers").select("id").eq("email", email).neq("id", String(b.id)).maybeSingle();
+    if (dup) return fail("Another teacher already uses that email", 400);
+
+    const { data: t } = await sb.from("teachers").select("auth_user_id, email").eq("id", String(b.id)).maybeSingle();
+    if (!t?.auth_user_id) return fail("This teacher has no login yet", 400);
+
+    const { error: ae } = await sb.auth.admin.updateUserById(t.auth_user_id, { email, email_confirm: true });
+    if (ae) return fail(ae.message, 400);
+
+    const { error } = await sb.from("teachers").update({ email }).eq("id", String(b.id));
+    if (error) {
+      await sb.auth.admin.updateUserById(t.auth_user_id, { email: t.email, email_confirm: true }); // undo
+      return fail(error.message);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   // ---------- set a new password for a teacher ----------
   if (b.action === "resetPassword") {
     const password = String(b.password ?? "");
