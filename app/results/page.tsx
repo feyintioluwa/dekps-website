@@ -190,7 +190,7 @@ export default function ResultsPage() {
 
   return (
     <>
-      <header className="top-header">
+            <header className="top-header">
         <div className="header-inner">
           <div className="school-brand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -201,14 +201,15 @@ export default function ResultsPage() {
             />
             <div className="school-name">
               <h1>DE KINGS PERFECTION PRIVATE SCHOOL</h1>
+              <small className="portal-sub">STUDENT RESULT PORTAL</small>
             </div>
           </div>
 
-                    <div className="portal-title">
-            <span>STUDENT</span>
-            <strong>RESULT PORTAL</strong>
-                        <Link href="/" className="home-btn" style={{ marginTop: 8 }}>← Home</Link>
-          </div>
+          <Link href="/" className="portal-home" aria-label="Back to home" title="Home">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </Link>
         </div>
       </header>
 
