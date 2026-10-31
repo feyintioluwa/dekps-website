@@ -29,8 +29,9 @@ export default function AdminTeachers() {
   const [nf, setNf] = useState({ name: "", email: "", password: "" });
   const [openId, setOpenId] = useState("");
   const [ctick, setCtick] = useState<Set<string>>(new Set());
-  const [selClass, setSelClass] = useState("");
   const [stick, setStick] = useState<Set<string>>(new Set());
+  const [moveSel, setMoveSel] = useState<Set<string>>(new Set());
+  const [moveTo, setMoveTo] = useState("");
   const [pw, setPw] = useState("");
 
   const h = { "Content-Type": "application/json", "x-admin-key": key };
@@ -61,6 +62,14 @@ export default function AdminTeachers() {
   const cname = (id: string) => classes.find((c) => c.id === id)?.name ?? "?";
   const sname = (id: string) => subjects.find((s) => s.id === id)?.name ?? "?";
 
+  // Which teacher owns which subject (a subject belongs to one teacher, in every class that takes it)
+  const owner = new Map<string, string>();
+  for (const t of teachers) for (const s of t.subjects) owner.set(s.subject_id, t.id);
+  const ownedIds = (t: T) => [...new Set(t.subjects.map((s) => s.subject_id))];
+  const classCount = (sid: string) => links.filter((l) => l.subject_id === sid).length;
+  const heldCount = (t: T, sid: string) => t.subjects.filter((s) => s.subject_id === sid).length;
+  const taught = subjects.filter((s) => links.some((l) => l.subject_id === s.id));
+
   async function addTeacher() {
     const ok = await act({ action: "create", ...nf }, `Teacher added: ${nf.name}. Give them their email and password.`);
     if (ok) setNf({ name: "", email: "", password: "" });
@@ -70,11 +79,8 @@ export default function AdminTeachers() {
     if (openId === t.id) { setOpenId(""); return; }
     setOpenId(t.id);
     setCtick(new Set(t.classTeacher));
-    setSelClass(""); setStick(new Set()); setPw("");
-  }
-  function pickClass(t: T, cid: string) {
-    setSelClass(cid);
-    setStick(new Set(t.subjects.filter((s) => s.class_id === cid).map((s) => s.subject_id)));
+    setStick(new Set(ownedIds(t)));
+    setMoveSel(new Set()); setMoveTo(""); setPw("");
   }
   const flip = (set: Set<string>, id: string) => { const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); return n; };
 
@@ -95,16 +101,27 @@ export default function AdminTeachers() {
     const ok = await act({ action: "resetPassword", id: t.id, password: pw }, "Password changed.");
     if (ok) setPw("");
   }
+  async function moveSubjects(t: T) {
+    const to = teachers.find((x) => x.id === moveTo);
+    if (!to || !moveSel.size) return;
+    const names = [...moveSel].map(sname).join(", ");
+    if (!(await ask({
+      title: "Move subjects?",
+      message: `Move ${names} from ${t.name} to ${to.name}? ${t.name} will lose them in every class, and ${to.name} will teach them in every class that takes them. Marks and past work are not changed.`,
+      confirmText: "Move",
+    }))) return;
+    const ok = await act({ action: "moveSubjects", fromId: t.id, toId: to.id, subjectIds: [...moveSel] }, `Moved ${names} from ${t.name} to ${to.name}.`);
+    if (ok) { setOpenId(""); setMoveSel(new Set()); setMoveTo(""); }
+  }
 
   const eligible = classes.filter((c) => c.sort_order <= maxOrder);
-  const classSubs = (cid: string) => links.filter((l) => l.class_id === cid).map((l) => l.subject_id);
 
   return (
     <div className="adm">
       <h1>Teachers</h1>
       <p>
-        A <b>subject teacher</b> works only with the subjects you assign to them, in the classes you choose. A <b>class teacher</b> (Creche to Basic 6 only)
-        covers every subject of their class. One person can be both.
+        A <b>subject teacher</b> teaches the subjects you give them in <b>every class that takes them</b>, and a subject belongs to only one teacher.
+        A <b>class teacher</b> (Creche to Basic 6 only) covers every subject of their class. One person can be both.
       </p>
       {msg && <p className="adm-msg">{msg}</p>}
 
@@ -123,9 +140,14 @@ export default function AdminTeachers() {
       {teachers.length === 0 && <p>No teachers yet.</p>}
       {teachers.map((t) => {
         const open = openId === t.id;
-        const byClass = classes
-          .map((c) => ({ c, subs: t.subjects.filter((s) => s.class_id === c.id).map((s) => sname(s.subject_id)) }))
-          .filter((x) => x.subs.length);
+        const mine = ownedIds(t);
+        const summary = mine.map((sid) => {
+          const hc = heldCount(t, sid), cc = classCount(sid);
+          return hc < cc ? `${sname(sid)} (${hc} of ${cc} classes)` : sname(sid);
+        });
+        // Subjects this teacher can pick: their own, plus the ones nobody has
+        const pickable = taught.filter((s) => !owner.has(s.id) || owner.get(s.id) === t.id);
+        const others = teachers.filter((x) => x.id !== t.id && x.is_active);
         return (
           <div key={t.id} style={{ ...box, opacity: t.is_active ? 1 : 0.6 }}>
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}>
@@ -140,10 +162,7 @@ export default function AdminTeachers() {
             </div>
             <div style={{ fontSize: ".9rem", marginTop: 6 }}>
               <div><b>Class teacher of:</b> {t.classTeacher.length ? t.classTeacher.map(cname).join(", ") : "none"}</div>
-              <div>
-                <b>Subject teacher:</b>{" "}
-                {byClass.length ? byClass.map((x) => `${x.c.name}: ${x.subs.join(", ")}`).join(" · ") : "none"}
-              </div>
+              <div><b>Subject teacher:</b> {summary.length ? summary.join(", ") : "none"}</div>
             </div>
 
             {open && (
@@ -162,30 +181,48 @@ export default function AdminTeachers() {
                 </button>
 
                 <h3 style={{ margin: "16px 0 4px" }}>Subject teacher</h3>
-                <select value={selClass} onChange={(e) => pickClass(t, e.target.value)}>
-                  <option value="">Choose a class</option>
-                  {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                {selClass && (
+                <p style={{ fontSize: ".85rem", color: "#687385", margin: "0 0 6px" }}>
+                  Only this teacher&apos;s subjects and subjects nobody has yet are shown. A subject another teacher has is hidden: use <b>Move subjects</b> below, on that teacher.
+                </p>
+                {pickable.length === 0 ? (
+                  <p>Every subject already belongs to another teacher.</p>
+                ) : (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
+                    {pickable.map((s) => (
+                      <label key={s.id} style={{ display: "flex", alignItems: "center" }}>
+                        <input type="checkbox" style={chk} checked={stick.has(s.id)} onChange={() => setStick(flip(stick, s.id))} />
+                        {s.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <button disabled={busy} style={{ marginTop: 8 }} onClick={() => act({ action: "setTeacherSubjects", id: t.id, subjectIds: [...stick] }, `Subjects saved for ${t.name}.`)}>
+                  Save subjects
+                </button>
+                <p style={{ fontSize: ".85rem", color: "#687385" }}>
+                  Each ticked subject is given in every class that takes it. Untick a subject and save to free it for another teacher.
+                </p>
+
+                <h3 style={{ margin: "16px 0 4px" }}>Move subjects to another teacher</h3>
+                {mine.length === 0 ? (
+                  <p>{t.name} has no subjects to move.</p>
+                ) : (
                   <>
-                    {classSubs(selClass).length === 0 ? (
-                      <p>No subjects are set for this class yet.</p>
-                    ) : (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", marginTop: 8 }}>
-                        {classSubs(selClass).map((sid) => (
-                          <label key={sid} style={{ display: "flex", alignItems: "center" }}>
-                            <input type="checkbox" style={chk} checked={stick.has(sid)} onChange={() => setStick(flip(stick, sid))} />
-                            {sname(sid)}
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    <button disabled={busy} style={{ marginTop: 8 }} onClick={() => act({ action: "setSubjects", id: t.id, classId: selClass, subjectIds: [...stick] }, `Subjects saved for ${cname(selClass)}.`)}>
-                      Save subjects for {cname(selClass)}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px" }}>
+                      {mine.map((sid) => (
+                        <label key={sid} style={{ display: "flex", alignItems: "center" }}>
+                          <input type="checkbox" style={chk} checked={moveSel.has(sid)} onChange={() => setMoveSel(flip(moveSel, sid))} />
+                          {sname(sid)}
+                        </label>
+                      ))}
+                    </div>
+                    <select value={moveTo} onChange={(e) => setMoveTo(e.target.value)} style={{ marginTop: 8 }}>
+                      <option value="">Move to which teacher?</option>
+                      {others.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                    </select>
+                    <button disabled={busy || !moveSel.size || !moveTo} style={{ marginTop: 8 }} onClick={() => moveSubjects(t)}>
+                      Move {moveSel.size ? `${moveSel.size} subject${moveSel.size === 1 ? "" : "s"}` : "subjects"}
                     </button>
-                    <p style={{ fontSize: ".85rem", color: "#687385" }}>
-                      This replaces the subjects this teacher has in {cname(selClass)}. Untick a subject and save to take it away.
-                    </p>
                   </>
                 )}
 

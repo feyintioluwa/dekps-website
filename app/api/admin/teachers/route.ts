@@ -118,28 +118,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // ---------- subject teacher: the whole set of subjects this teacher teaches in ONE class ----------
-  if (b.action === "setSubjects") {
-    if (!b.id || !b.classId) return fail("Choose a teacher and a class", 400);
-    const want = [...new Set(((b.subjectIds ?? []) as string[]).map(String))];
-    if (want.length) {
-      const { data: ok } = await sb.from("class_subjects").select("subject_id").eq("class_id", String(b.classId)).in("subject_id", want);
-      if ((ok ?? []).length !== want.length) return fail("Some of those subjects are not taught in that class", 400);
-    }
-    const { data: have } = await sb.from("teacher_subjects").select("subject_id").eq("teacher_id", String(b.id)).eq("class_id", String(b.classId));
-    const haveSet = new Set((have ?? []).map((r) => r.subject_id));
-    const toAdd = want.filter((id) => !haveSet.has(id));
-    const toRemove = [...haveSet].filter((id) => !want.includes(id));
-    if (toRemove.length) {
-      const { error } = await sb.from("teacher_subjects").delete()
-        .eq("teacher_id", String(b.id)).eq("class_id", String(b.classId)).in("subject_id", toRemove);
-      if (error) return fail(error.message);
-    }
-    if (toAdd.length) {
-      const { error } = await sb.from("teacher_subjects")
-        .insert(toAdd.map((subject_id) => ({ teacher_id: String(b.id), class_id: String(b.classId), subject_id })));
-      if (error) return fail(error.message);
-    }
+  // ---------- subject teacher: the teacher's whole subject list, in EVERY class that takes each subject ----------
+  // A subject can belong to only one teacher; the database refuses a second owner.
+  if (b.action === "setTeacherSubjects") {
+    if (!b.id) return fail("Missing teacher", 400);
+    const subjectIds = [...new Set(((b.subjectIds ?? []) as string[]).map(String))];
+    const { error } = await sb.rpc("admin_set_teacher_subjects", { p_teacher: String(b.id), p_subjects: subjectIds });
+    if (error) return fail(error.message, 400);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ---------- move one or more subjects from one teacher to another ----------
+  if (b.action === "moveSubjects") {
+    if (!b.fromId || !b.toId) return fail("Choose the teacher to move the subjects to", 400);
+    const subjectIds = [...new Set(((b.subjectIds ?? []) as string[]).map(String))];
+    if (!subjectIds.length) return fail("Choose at least one subject to move", 400);
+    const { error } = await sb.rpc("admin_move_subjects", {
+      p_from: String(b.fromId), p_to: String(b.toId), p_subjects: subjectIds,
+    });
+    if (error) return fail(error.message, 400);
     return NextResponse.json({ ok: true });
   }
 
