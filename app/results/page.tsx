@@ -214,7 +214,7 @@ export default function ResultsPage() {
       </header>
 
       <main>
-        <section className="hero">
+        <section className="hero" style={student ? { display: "none" } : undefined}>
           <div className="hero-content">
                         <div className="hero-badge">{sessionLabel ? sessionLabel.replace("/", " / ") + " " : ""}ACADEMIC SESSION</div>
             <h2>Check Your Academic Result</h2>
