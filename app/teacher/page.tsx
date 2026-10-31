@@ -216,7 +216,15 @@ export default function TeacherPage() {
                     Open tests &amp; exams
                   </span>
                 </a>
-                {me.classes.map((c) => (
+                <a className="tch-card tch-assign-card" href="/teacher/scores">
+                  <div className="tch-class-top">
+                    <h2>Scores</h2>
+                  </div>
+                  <p className="tch-muted">Download a broadsheet for your classes and subjects, fill it in and upload it.</p>
+                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    Open scores
+                  </span>
+                </a>
                   <article className="tch-card" key={c.id}>
                     <div className="tch-class-top">
                       <h2>{c.name}</h2>
