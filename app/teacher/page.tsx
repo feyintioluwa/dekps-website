@@ -13,6 +13,7 @@ type ClassCard = {
 };
 type Me = { teacher: { name: string; email: string }; classes: ClassCard[] };
 type Student = { id: string; login_id: string; name: string };
+type Note = { id: string; assignmentId: string; student: string; className: string; subject: string; title: string; submittedAt: string; read: boolean };
 
 const NETWORK = "Could not reach the server. Check your internet and try again.";
 
@@ -30,6 +31,7 @@ export default function TeacherPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [q, setQ] = useState("");
+  const [notes, setNotes] = useState<Note[]>([]);
 
   async function loadMe(): Promise<boolean> {
     try {
@@ -55,6 +57,32 @@ export default function TeacherPage() {
     })();
   }, []);
 
+    // New submissions for this teacher (loaded once they are signed in)
+  async function loadNotes() {
+    try {
+      const res = await fetch("/api/teacher/notifications");
+      if (res.ok) setNotes((await res.json()).items ?? []);
+    } catch { /* the bell just stays empty */ }
+  }
+  useEffect(() => { if (me) loadNotes(); }, [me]);
+
+  function readNote(id: string) {
+    setNotes((p) => p.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    fetch("/api/teacher/notifications", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "read", id }),
+    }).catch(() => {});
+  }
+  async function readAllNotes() {
+    setNotes((p) => p.map((n) => ({ ...n, read: true })));
+    await fetch("/api/teacher/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "readAll" }),
+    }).catch(() => {});
+  }
+  const unread = notes.filter((n) => !n.read).length;
   async function signIn(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMsg("");
@@ -189,6 +217,37 @@ export default function TeacherPage() {
             <p className="tch-muted">Your classes and subjects</p>
             {msg && <p className="tch-error" role="alert">{msg}</p>}
 
+                      <div className="tch-card" style={{ margin: "14px 0" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <h2 style={{ margin: 0 }}>
+                  🔔 Notifications
+                  {unread > 0 && (
+                    <span style={{ marginLeft: 8, padding: "2px 10px", borderRadius: 999, background: "#c62828", color: "#fff", fontSize: ".8rem" }}>
+                      {unread} new
+                    </span>
+                  )}
+                </h2>
+                {unread > 0 && <button type="button" className="tch-link" onClick={readAllNotes}>Mark all as read</button>}
+              </div>
+              {notes.length === 0 ? (
+                <p className="tch-muted" style={{ margin: "8px 0 0" }}>No submissions yet. They will appear here when students hand in work.</p>
+              ) : (
+                notes.slice(0, 8).map((n) => (
+                  <a
+                    key={n.id}
+                    href={`/teacher/assignments?open=${n.assignmentId}`}
+                    onClick={() => readNote(n.id)}
+                    style={{
+                      display: "block", marginTop: 8, padding: "10px 12px", borderRadius: 10, textDecoration: "none",
+                      color: "inherit", border: "1px solid #dfe4ea", background: n.read ? "#fff" : "#eef5ff",
+                    }}
+                  >
+                    <b>{n.student}</b> ({n.className}) submitted {n.subject}: {n.title}
+                    <div className="tch-muted" style={{ fontSize: ".8rem" }}>{new Date(n.submittedAt).toLocaleString()}</div>
+                  </a>
+                ))
+              )}
+            </div>
             {me.classes.length === 0 ? (
               <div className="tch-card tch-empty">
                 <h2>No classes yet</h2>
