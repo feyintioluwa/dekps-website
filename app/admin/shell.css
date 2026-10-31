@@ -41,4 +41,11 @@
   .shell-top{flex-wrap:wrap}
   .shell-top,.shell-body{padding-left:14px;padding-right:14px}
 }
+/* Slim gold scrollbar for the side menu */
+.shell-nav{scrollbar-width:thin;scrollbar-color:rgba(212,173,88,.6) transparent}
+.shell-nav::-webkit-scrollbar{width:8px}
+.shell-nav::-webkit-scrollbar-track{background:transparent}
+.shell-nav::-webkit-scrollbar-thumb{background:rgba(212,173,88,.55);border-radius:8px}
+.shell-nav::-webkit-scrollbar-thumb:hover{background:rgba(212,173,88,.9)}
+.shell-nav::-webkit-scrollbar-button{display:none;width:0;height:0}
 @media print{.shell-side,.shell-top{display:none!important}.shell-body{padding:0;max-width:none}}
