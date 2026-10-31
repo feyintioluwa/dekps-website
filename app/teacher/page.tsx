@@ -225,6 +225,7 @@ export default function TeacherPage() {
                     Open scores
                   </span>
                 </a>
+                                {classes.map((c) => (
                   <article className="tch-card" key={c.id}>
                     <div className="tch-class-top">
                       <h2>{c.name}</h2>
