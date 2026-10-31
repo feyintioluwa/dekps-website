@@ -165,8 +165,9 @@ export default function AdminTeachers() {
               </div>
             </div>
             <div style={{ fontSize: ".9rem", marginTop: 6 }}>
-              <div><b>Class teacher of:</b> {t.classTeacher.length ? t.classTeacher.map(cname).join(", ") : "none"}</div>
-              <div><b>Subject teacher (JSS/SSS):</b> {summary.length ? summary.join(", ") : "none"}</div>
+                            {t.classTeacher.length > 0 && <div><b>Class teacher of:</b> {t.classTeacher.map(cname).join(", ")}</div>}
+              {summary.length > 0 && <div><b>Subject teacher (JSS/SSS):</b> {summary.join(", ")}</div>}
+              {t.classTeacher.length === 0 && summary.length === 0 && <div>No class or subject yet</div>}
             </div>
 
             {open && (
