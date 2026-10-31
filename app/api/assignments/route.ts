@@ -135,6 +135,30 @@ export async function POST(request: Request) {
       { onConflict: "assignment_id,student_id" }
     );
     if (error) { console.error("assignment submit failed:", error.message); return bad("error", 500); }
+
+    // Tell the teachers of this subject in this class. A failure here never blocks the submission.
+    try {
+      const { data: asg } = await sb.from("assignments").select("subject_id").eq("id", aid).maybeSingle();
+      if (asg?.subject_id) {
+        const { data: links } = await sb.from("teacher_subjects").select("teacher_id")
+          .eq("class_id", classId).eq("subject_id", asg.subject_id);
+        const ids = [...new Set((links ?? []).map((x) => x.teacher_id as string))];
+        if (ids.length) {
+          const { data: active } = await sb.from("teachers").select("id").in("id", ids).eq("is_active", true);
+          const rows = (active ?? []).map((x) => ({
+            teacher_id: x.id as string, assignment_id: aid, student_id: studentId,
+            submitted_at: new Date(now).toISOString(), read_at: null,
+          }));
+          if (rows.length) {
+            const { error: ne } = await sb.from("teacher_notifications").upsert(rows, { onConflict: "teacher_id,assignment_id,student_id" });
+            if (ne) console.error("teacher notification failed:", ne.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("teacher notification failed:", (e as Error).message);
+    }
+
     return NextResponse.json({ status: "ok" });
   }
 

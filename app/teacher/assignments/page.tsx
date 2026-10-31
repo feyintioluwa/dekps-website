@@ -119,6 +119,17 @@ function TeacherAssignments() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  // Opened from a notification: /teacher/assignments?open=<assignment id>
+  const [linkHandled, setLinkHandled] = useState(false);
+  useEffect(() => {
+    if (!loaded || linkHandled) return;
+    setLinkHandled(true);
+    const id = new URLSearchParams(window.location.search).get("open");
+    const a = id ? list.find((x) => x.id === id) : null;
+    if (a) openAsg(a);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, list, linkHandled]);
+
   function toggleClass(id: string) {
     setClassIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
     setF((p) => ({ ...p, subjectId: "" }));
