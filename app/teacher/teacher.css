@@ -51,6 +51,7 @@
 @media (max-width:560px){
   .tch-header-in{padding:10px 14px}
   .tch-brand strong{font-size:.72rem}
+  .tch-brand div{display:none}
   .tch-me span{display:none}
   .tch-me a.tch-light{display:none}
   .tch-card{padding:18px}
