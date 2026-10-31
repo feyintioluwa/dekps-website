@@ -95,7 +95,11 @@ function TeacherAssignments() {
     if (!r.ok) throw new Error(d.error || "Failed");
     return d;
   };
-  const name = (l: Opt[], id: string) => l.find((x) => x.id === id)?.name ?? "?";
+    const name = (l: Opt[], id: string) => l.find((x) => x.id === id)?.name ?? "?";
+  async function signOut() {
+    await fetch("/api/teacher/session", { method: "DELETE" }).catch(() => {});
+    window.location.href = "/teacher";
+  }
 
   async function load() {
     try {
@@ -350,9 +354,12 @@ function TeacherAssignments() {
                 <small>TEACHER PORTAL</small>
               </div>
             </div>
-            <a className="tch-btn tch-light" href="/teacher" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-              ← My classes
-            </a>
+              <div className="tch-me">
+              <a className="tch-btn tch-light tch-back-link" href="/teacher" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                ← My classes
+              </a>
+              <button className="tch-btn tch-light" onClick={signOut}>Log out</button>
+            </div>
           </div>
         </header>
       </div>
