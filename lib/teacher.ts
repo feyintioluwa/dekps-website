@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const ACCESS = "dkps_t_access";
@@ -58,6 +59,7 @@ export type TeacherResult =
  * allowed to see. Call this at the top of EVERY teacher route.
  */
 export async function getTeacher(): Promise<TeacherResult> {
+  await connection(); // tells Next this runs per request, never at build time
   try {
     const jar = await cookies();
     const db = serviceDb();
