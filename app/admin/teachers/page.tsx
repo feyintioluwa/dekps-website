@@ -62,13 +62,19 @@ export default function AdminTeachers() {
   const cname = (id: string) => classes.find((c) => c.id === id)?.name ?? "?";
   const sname = (id: string) => subjects.find((s) => s.id === id)?.name ?? "?";
 
-  // Which teacher owns which subject (a subject belongs to one teacher, in every class that takes it)
+  // Creche to Basic 6 have CLASS teachers. Subject teachers are for JSS and SSS only.
+  const eligible = classes.filter((c) => c.sort_order <= maxOrder);
+  const secIds = new Set(classes.filter((c) => c.sort_order > maxOrder).map((c) => c.id));
+  const secLinks = links.filter((l) => secIds.has(l.class_id));
+  const mySecRows = (t: T) => t.subjects.filter((r) => secIds.has(r.class_id));
+
+  // Which teacher owns which subject (a subject belongs to one teacher, in every JSS/SSS class that takes it)
   const owner = new Map<string, string>();
-  for (const t of teachers) for (const s of t.subjects) owner.set(s.subject_id, t.id);
-  const ownedIds = (t: T) => [...new Set(t.subjects.map((s) => s.subject_id))];
-  const classCount = (sid: string) => links.filter((l) => l.subject_id === sid).length;
-  const heldCount = (t: T, sid: string) => t.subjects.filter((s) => s.subject_id === sid).length;
-  const taught = subjects.filter((s) => links.some((l) => l.subject_id === s.id));
+  for (const t of teachers) for (const r of mySecRows(t)) owner.set(r.subject_id, t.id);
+  const ownedIds = (t: T) => [...new Set(mySecRows(t).map((r) => r.subject_id))];
+  const classCount = (sid: string) => secLinks.filter((l) => l.subject_id === sid).length;
+  const heldCount = (t: T, sid: string) => mySecRows(t).filter((r) => r.subject_id === sid).length;
+  const taught = subjects.filter((s) => secLinks.some((l) => l.subject_id === s.id));
 
   async function addTeacher() {
     const ok = await act({ action: "create", ...nf }, `Teacher added: ${nf.name}. Give them their email and password.`);
@@ -114,14 +120,12 @@ export default function AdminTeachers() {
     if (ok) { setOpenId(""); setMoveSel(new Set()); setMoveTo(""); }
   }
 
-  const eligible = classes.filter((c) => c.sort_order <= maxOrder);
-
   return (
     <div className="adm">
       <h1>Teachers</h1>
       <p>
-        A <b>subject teacher</b> teaches the subjects you give them in <b>every class that takes them</b>, and a subject belongs to only one teacher.
-        A <b>class teacher</b> (Creche to Basic 6 only) covers every subject of their class. One person can be both.
+        A <b>class teacher</b> (Creche to Basic 6) covers every subject of their class.
+        A <b>subject teacher</b> (JSS and SSS) teaches the subjects you give them in <b>every JSS and SSS class that takes them</b>, and a subject belongs to only one teacher.
       </p>
       {msg && <p className="adm-msg">{msg}</p>}
 
@@ -162,7 +166,7 @@ export default function AdminTeachers() {
             </div>
             <div style={{ fontSize: ".9rem", marginTop: 6 }}>
               <div><b>Class teacher of:</b> {t.classTeacher.length ? t.classTeacher.map(cname).join(", ") : "none"}</div>
-              <div><b>Subject teacher:</b> {summary.length ? summary.join(", ") : "none"}</div>
+              <div><b>Subject teacher (JSS/SSS):</b> {summary.length ? summary.join(", ") : "none"}</div>
             </div>
 
             {open && (
@@ -180,7 +184,7 @@ export default function AdminTeachers() {
                   Save class teacher
                 </button>
 
-                <h3 style={{ margin: "16px 0 4px" }}>Subject teacher</h3>
+                <h3 style={{ margin: "16px 0 4px" }}>Subject teacher (JSS and SSS)</h3>
                 <p style={{ fontSize: ".85rem", color: "#687385", margin: "0 0 6px" }}>
                   Only this teacher&apos;s subjects and subjects nobody has yet are shown. A subject another teacher has is hidden: use <b>Move subjects</b> below, on that teacher.
                 </p>
@@ -200,7 +204,7 @@ export default function AdminTeachers() {
                   Save subjects
                 </button>
                 <p style={{ fontSize: ".85rem", color: "#687385" }}>
-                  Each ticked subject is given in every class that takes it. Untick a subject and save to free it for another teacher.
+                  Each ticked subject is given in every JSS and SSS class that takes it. Untick a subject and save to free it for another teacher.
                 </p>
 
                 <h3 style={{ margin: "16px 0 4px" }}>Move subjects to another teacher</h3>
