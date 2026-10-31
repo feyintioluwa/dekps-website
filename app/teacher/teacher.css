@@ -52,5 +52,6 @@
   .tch-header-in{padding:10px 14px}
   .tch-brand strong{font-size:.72rem}
   .tch-me span{display:none}
+  .tch-me a.tch-light{display:none}
   .tch-card{padding:18px}
 }
