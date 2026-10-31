@@ -1826,3 +1826,41 @@ img {
         print-color-adjust: exact !important;
     }
 }
+
+/* Phone: make the results table fit the screen instead of scrolling sideways */
+@media screen and (max-width: 600px) {
+    .table-container {
+        overflow-x: visible;
+        margin-left: 10px;
+        margin-right: 10px;
+    }
+    .result-table {
+        min-width: 0;
+        table-layout: fixed;
+    }
+    .result-table th,
+    .result-table td {
+        padding: 8px 4px;
+    }
+    .result-table th {
+        font-size: 0.62rem;
+        letter-spacing: 0;
+    }
+    .result-table td {
+        font-size: 0.75rem;
+    }
+    .result-table th:nth-child(1) {
+        width: 28px;
+    }
+    .result-table th:nth-child(3),
+    .result-table th:nth-child(4),
+    .result-table th:nth-child(5) {
+        width: 40px;
+    }
+    .result-table th:nth-child(6) {
+        width: 46px;
+    }
+    .result-table td:nth-child(2) {
+        overflow-wrap: anywhere;
+    }
+}
