@@ -207,6 +207,15 @@ export default function TeacherPage() {
                     Open assignments
                   </span>
                 </a>
+                <a className="tch-card tch-assign-card" href="/teacher/cbt">
+                  <div className="tch-class-top">
+                    <h2>Tests &amp; Exams</h2>
+                  </div>
+                  <p className="tch-muted">Create tests and exams, add questions, publish them, and see the results.</p>
+                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    Open tests &amp; exams
+                  </span>
+                </a>
                 {me.classes.map((c) => (
                   <article className="tch-card" key={c.id}>
                     <div className="tch-class-top">
