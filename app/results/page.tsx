@@ -224,7 +224,7 @@ export default function ResultsPage() {
           </div>
         </section>
 
-        <section className="login-section" id="loginSection">
+                <section className="login-section" id="loginSection" style={student ? { display: "none" } : undefined}>
           <div className="login-card">
             <div className="login-heading">
               <div className="login-icon">🔐</div>
@@ -244,7 +244,8 @@ export default function ResultsPage() {
                   placeholder="Enter your Login ID"
                   autoComplete="username"
                   value={loginId}
-                  onChange={(e) => setLoginId(e.target.value)}
+                  onChange={(e) => setLoginId(e.target.value.toUpperCase())}
+                  autoCapitalize="characters"
                   required
                 />
               </div>

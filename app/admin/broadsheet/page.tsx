@@ -11,7 +11,7 @@ type Stu = { id: string; login_id: string; name: string };
 type Data = {
   students: Stu[]; subjects: Opt[];
   studentSubjects: { student_id: string; subject_id: string }[];
-  scores: { student_id: string; subject_id: string; kind: string; score: number }[];
+    scores: { student_id: string; subject_id: string; kind: string; score: number; source: string }[];
 };
 type Row = { loginId: string; scores: { subjectId: string; kind: string; score: number }[] };
 type Group = { classId: string; className: string; rows: Row[] };
@@ -31,6 +31,7 @@ export default function Broadsheet() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Group[]>([]);
+  const [overwrites, setOverwrites] = useState<string[]>([]);
   const h = { "Content-Type": "application/json", "x-admin-key": key };
 
   async function unlock() {
@@ -110,6 +111,7 @@ export default function Broadsheet() {
     const errors: string[] = [];
     const skipped: string[] = [];
     const notFound: string[] = [];
+    const over: string[] = [];
     for (const sheetName of wb.SheetNames) {
       const cls = classId === "all"
         ? classes.find((c) => norm(c.name) === norm(sheetName))
@@ -161,7 +163,13 @@ export default function Broadsheet() {
             if (raw === "" || raw === undefined || raw === null) continue;
             const n = Math.round(Number(raw));
             if (Number.isNaN(n) || n < 0 || n > mx) errors.push(`${cls.name} ${st.name}: ${col.s.name} ${label} = "${raw}" (max ${mx})`);
-            else scores.push({ subjectId: col.s.id, kind, score: n });
+              else {
+              scores.push({ subjectId: col.s.id, kind, score: n });
+              // Was this score entered by a teacher, and does the file change it?
+              if (d.scores.some((x) => x.student_id === st.id && x.subject_id === col.s.id && x.kind === kind && x.source === "teacher" && x.score !== n)) {
+                over.push(`${cls.name} ${st.name}: ${col.s.name} ${label}`);
+              }
+            }
           }
         }
         rows.push({ loginId: st.login_id, scores });
@@ -174,11 +182,13 @@ export default function Broadsheet() {
       return setMsg(`Fix these and re-upload: ${errors.slice(0, 8).join("; ")}${errors.length > 8 ? ` … and ${errors.length - 8} more` : ""}`);
     }
     setPending(groups);
+    setOverwrites(over);
     const n = groups.reduce((a, g) => a + g.rows.length, 0);
     setMsg(
       `${n} students read from ${groups.length} class${groups.length === 1 ? "" : "es"}.` +
       (skipped.length ? ` Skipped tabs (no matching class): ${skipped.join(", ")}.` : "") +
       (notFound.length ? ` Names NOT found on the website (not saved): ${notFound.slice(0, 12).join("; ")}${notFound.length > 12 ? ` … and ${notFound.length - 12} more` : ""}.` : "") +
+      (over.length ? ` ${over.length} score${over.length === 1 ? "" : "s"} entered by teachers will be replaced (you will be asked to confirm).` : "") +
       " Press Save scores."
     );
   }
@@ -189,7 +199,16 @@ export default function Broadsheet() {
     if (!r.ok) throw new Error(d.error);
     return d;
   }
-  async function save() {
+    async function save() {
+    if (overwrites.length) {
+      const list = overwrites.slice(0, 8).join("\n") + (overwrites.length > 8 ? `\n… and ${overwrites.length - 8} more` : "");
+      if (!(await ask({
+        title: "Replace teachers' scores?",
+        message: `This file will replace ${overwrites.length} score${overwrites.length === 1 ? "" : "s"} entered by teachers:\n${list}`,
+        confirmText: "Replace and save",
+        danger: true,
+      }))) return;
+    }
     setBusy(true);
     try {
       let saved = 0; const unknown: string[] = [];
@@ -199,6 +218,7 @@ export default function Broadsheet() {
       }
       setMsg(`${saved} scores saved.${unknown.length ? " Not in their class: " + unknown.join(", ") : ""}`);
       setPending([]);
+      setOverwrites([]);
     } catch (e) { setMsg((e as Error).message); }
     setBusy(false);
   }
@@ -226,6 +246,25 @@ export default function Broadsheet() {
         lines.push(`${c.name}: ${d.published}`);
       }
       setMsg(`Published — ${lines.join(", ")}`);
+    } catch (e) { setMsg((e as Error).message); }
+    setBusy(false);
+  }
+    async function unpublish() {
+    if (!termId) return setMsg("Choose the term first.");
+    if (!(await ask({
+      title: classId === "all" ? "Unpublish results for ALL classes?" : "Unpublish results for this class?",
+      message: "Students will no longer be able to see these results. Scores and remarks are kept, and you can publish again at any time.",
+      confirmText: "Unpublish",
+      danger: true,
+    }))) return;
+    setBusy(true);
+    try {
+      const lines: string[] = [];
+      for (const c of targets()) {
+        const d = await post(c.id, { action: "unpublish" });
+        lines.push(`${c.name}: ${d.removed}`);
+      }
+      setMsg(`Unpublished — ${lines.join(", ")}`);
     } catch (e) { setMsg((e as Error).message); }
     setBusy(false);
   }
@@ -282,14 +321,12 @@ export default function Broadsheet() {
           <h2>2. Upload filled file</h2>
           <input type="file" accept=".xlsx,.xls" onChange={onFile} disabled={busy} />
           <button disabled={!pending.length || busy} onClick={save}>Save scores</button>
-          <h2>3. Fill remarks</h2>
-          <button disabled={busy} onClick={fillRemarks}>{classId === "all" ? "Fill remarks for all classes" : "Fill remarks for this class"}</button>
-          <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>Do this after Save scores and before Publish. Remarks are chosen from each student&apos;s average. A remark already written is never replaced.</p>
-          <h2>4. Publish to portal</h2>
+          <h2>3. Publish to portal</h2>
           <div className="adm-row"><input value={termLabel} onChange={(e) => setTermLabel(e.target.value)} placeholder="Term name e.g. First Term" /><input value={session} onChange={(e) => setSession(e.target.value)} placeholder="Session" /></div>
-          <button disabled={busy} onClick={publish}>{classId === "all" ? "Publish all classes" : "Publish this class"}</button>
+                    <button disabled={busy} onClick={publish}>{classId === "all" ? "Publish all classes" : "Publish this class"}</button>
+          <button style={{ background: "#9e1824", marginLeft: 8 }} disabled={busy} onClick={unpublish}>{classId === "all" ? "Unpublish all classes" : "Unpublish this class"}</button>
           <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>Totals, average and grade are computed from CA + Exam. Students with no scores are skipped. Re-publishing updates existing results.</p>
-          <h2>5. Backup</h2>
+          <h2>4. Backup</h2>
           <button disabled={busy} onClick={backup}>Download backup of this term&apos;s scores</button>
           <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>Saves every CA and Exam score for the chosen term, for all classes, in one Excel file. Do this before a big upload and again before you publish.</p>
         </>

@@ -75,7 +75,7 @@ export async function GET(request: Request) {
   const sids = (students ?? []).map((s) => s.id);
   const { data: ss } = sids.length ? await sb.from("student_subjects").select("student_id, subject_id").in("student_id", sids) : { data: [] };
   const { data: scores } = termId && sids.length
-    ? await sb.from("scores").select("student_id, subject_id, kind, score").eq("term_id", termId).in("student_id", sids)
+        ? await sb.from("scores").select("student_id, subject_id, kind, score, source").eq("term_id", termId).in("student_id", sids)
     : { data: [] };
   // Show test1 as "ca" so the template and page keep working
   const shown = (scores ?? []).map((x) => ({ ...x, kind: x.kind === "test1" ? "ca" : x.kind }));
@@ -131,6 +131,12 @@ export async function POST(request: Request) {
     const { data, error } = await sb.rpc("admin_fill_remarks", { p_term: b.termId, p_class: b.classId });
     if (error) return fail(error.message);
     return NextResponse.json({ ok: true, filled: data });
+  }
+
+    if (b.action === "unpublish") {
+    const { data, error } = await sb.rpc("admin_unpublish_results", { p_term: b.termId, p_class: b.classId });
+    if (error) return fail(error.message);
+    return NextResponse.json({ ok: true, removed: data });
   }
 
   return fail("Unknown action", 400);
