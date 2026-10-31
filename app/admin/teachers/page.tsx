@@ -26,13 +26,14 @@ export default function AdminTeachers() {
   const [teachers, setTeachers] = useState<T[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [nf, setNf] = useState({ name: "", email: "", password: "" });
+  const [nf, setNf] = useState({ title: "", name: "", email: "", password: "" });
   const [openId, setOpenId] = useState("");
   const [ctick, setCtick] = useState<Set<string>>(new Set());
   const [stick, setStick] = useState<Set<string>>(new Set());
   const [moveSel, setMoveSel] = useState<Set<string>>(new Set());
   const [moveTo, setMoveTo] = useState("");
   const [pw, setPw] = useState("");
+  const [nm, setNm] = useState("");
 
   const h = { "Content-Type": "application/json", "x-admin-key": key };
 
@@ -77,13 +78,15 @@ export default function AdminTeachers() {
   const taught = subjects.filter((s) => secLinks.some((l) => l.subject_id === s.id));
 
   async function addTeacher() {
-    const ok = await act({ action: "create", ...nf }, `Teacher added: ${nf.name}. Give them their email and password.`);
-    if (ok) setNf({ name: "", email: "", password: "" });
+    const full = `${nf.title} ${nf.name}`.trim();
+    const ok = await act({ action: "create", name: full, email: nf.email, password: nf.password }, `Teacher added: ${full}. Give them their email and password.`);
+    if (ok) setNf({ title: "", name: "", email: "", password: "" });
   }
 
   function toggleOpen(t: T) {
     if (openId === t.id) { setOpenId(""); return; }
     setOpenId(t.id);
+    setNm(t.name);
     setCtick(new Set(t.classTeacher));
     setStick(new Set(ownedIds(t)));
     setMoveSel(new Set()); setMoveTo(""); setPw("");
@@ -106,6 +109,9 @@ export default function AdminTeachers() {
     }))) return;
     const ok = await act({ action: "resetPassword", id: t.id, password: pw }, "Password changed.");
     if (ok) setPw("");
+  }
+  async function renameTeacher(t: T) {
+    await act({ action: "rename", id: t.id, name: nm }, `Name changed to ${nm.trim()}.`);
   }
   async function moveSubjects(t: T) {
     const to = teachers.find((x) => x.id === moveTo);
@@ -131,6 +137,12 @@ export default function AdminTeachers() {
 
       <h2>1. Add a teacher</h2>
       <div className="adm-row">
+        <select value={nf.title} onChange={(e) => setNf({ ...nf, title: e.target.value })}>
+          <option value="">Title</option>
+          <option>Mr</option>
+          <option>Mrs</option>
+          <option>Miss</option>
+        </select>
         <input placeholder="Full name" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} />
         <input placeholder="Email address" type="email" value={nf.email} onChange={(e) => setNf({ ...nf, email: e.target.value })} />
         <input placeholder="Temporary password (8+ characters)" value={nf.password} onChange={(e) => setNf({ ...nf, password: e.target.value })} />
@@ -230,6 +242,12 @@ export default function AdminTeachers() {
                     </button>
                   </>
                 )}
+
+                <h3 style={{ margin: "16px 0 4px" }}>Name</h3>
+                <div className="adm-row">
+                  <input placeholder="e.g. Mr Adewale John" value={nm} onChange={(e) => setNm(e.target.value)} />
+                  <button disabled={busy || !nm.trim() || nm.trim() === t.name} onClick={() => renameTeacher(t)}>Save name</button>
+                </div>
 
                 <h3 style={{ margin: "16px 0 4px" }}>Password</h3>
                 <div className="adm-row">
