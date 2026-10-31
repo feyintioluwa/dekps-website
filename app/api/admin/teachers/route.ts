@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/admin";
 
 // A class teacher is only allowed for Creche up to Basic 6 (sort_order 85 or lower).
-// JSS and SSS have subject teachers only.
+// JSS and SSS have subject teachers only (one teacher per subject per class).
 const CLASS_TEACHER_MAX_ORDER = 85;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-    // ---------- change a teacher's sign-in email ----------
+  // ---------- change a teacher's sign-in email ----------
   if (b.action === "setEmail") {
     const email = String(b.email ?? "").trim().toLowerCase();
     if (!b.id) return fail("Missing teacher", 400);
@@ -141,12 +141,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // ---------- subject teacher: the teacher's whole subject list, in EVERY class that takes each subject ----------
-  // A subject can belong to only one teacher; the database refuses a second owner.
-  if (b.action === "setTeacherSubjects") {
+  // ---------- subject teacher: the teacher's whole list of (class, subject) pairs, JSS and SSS only ----------
+  // One teacher per subject PER CLASS; the database refuses a second owner.
+  if (b.action === "setTeacherPairs") {
     if (!b.id) return fail("Missing teacher", 400);
-    const subjectIds = [...new Set(((b.subjectIds ?? []) as string[]).map(String))];
-    const { error } = await sb.rpc("admin_set_teacher_subjects", { p_teacher: String(b.id), p_subjects: subjectIds });
+    const raw = Array.isArray(b.pairs) ? (b.pairs as { class_id?: unknown; subject_id?: unknown }[]) : [];
+    if (raw.length > 1000) return fail("Too many selections", 400);
+    const seen = new Set<string>();
+    const pairs: { class_id: string; subject_id: string }[] = [];
+    for (const p of raw) {
+      const class_id = String(p?.class_id ?? "");
+      const subject_id = String(p?.subject_id ?? "");
+      if (!class_id || !subject_id) return fail("Bad selection", 400);
+      const k = `${class_id}|${subject_id}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      pairs.push({ class_id, subject_id });
+    }
+    const { error } = await sb.rpc("admin_set_teacher_pairs", { p_teacher: String(b.id), p_pairs: pairs });
     if (error) return fail(error.message, 400);
     return NextResponse.json({ ok: true });
   }
