@@ -46,6 +46,8 @@
 .tch-table{width:100%;border-collapse:collapse;font-size:.92rem}
 .tch-table th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:10px 12px;border-bottom:2px solid var(--line)}
 .tch-table td{padding:11px 12px;border-bottom:1px solid var(--line)}
+.tch-assign-card{text-decoration:none;color:inherit;cursor:pointer}
+.tch-assign-card:hover{border-color:var(--blue)}
 @media (max-width:560px){
   .tch-header-in{padding:10px 14px}
   .tch-brand strong{font-size:.72rem}

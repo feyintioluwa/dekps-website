@@ -133,6 +133,9 @@ export default function TeacherPage() {
                 <b>{me.teacher.name}</b>
                 <small>{me.teacher.email}</small>
               </span>
+              <a className="tch-btn tch-light" href="/teacher/assignments" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                Assignments
+              </a>
               <button className="tch-btn tch-light" onClick={signOut}>Log out</button>
             </div>
           )}
@@ -198,6 +201,15 @@ export default function TeacherPage() {
               </div>
             ) : (
               <div className="tch-grid">
+                <a className="tch-card tch-assign-card" href="/teacher/assignments">
+                  <div className="tch-class-top">
+                    <h2>Assignments</h2>
+                  </div>
+                  <p className="tch-muted">Create assignments, mark submissions, and see who is missing.</p>
+                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    Open assignments
+                  </span>
+                </a>
                 {me.classes.map((c) => (
                   <article className="tch-card" key={c.id}>
                     <div className="tch-class-top">
