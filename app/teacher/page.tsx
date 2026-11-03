@@ -57,7 +57,7 @@ export default function TeacherPage() {
     })();
   }, []);
 
-    // New submissions for this teacher (loaded once they are signed in)
+  // New submissions for this teacher (loaded once they are signed in)
   async function loadNotes() {
     try {
       const res = await fetch("/api/teacher/notifications");
@@ -82,7 +82,32 @@ export default function TeacherPage() {
       body: JSON.stringify({ action: "readAll" }),
     }).catch(() => {});
   }
-  const unread = notes.filter((n) => !n.read).length;
+  const [showAll, setShowAll] = useState(false);
+  const unreadNotes = notes.filter((n) => !n.read);
+  const unread = unreadNotes.length;
+  const shownNotes = unreadNotes.slice(0, 3);          // the card shows only the 3 newest unread ones
+  const hiddenCount = notes.length - shownNotes.length; // anything else lives behind "View all"
+  useEffect(() => {
+    if (!showAll) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowAll(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showAll]);
+  const noteRow = (n: Note) => (
+    <a
+      key={n.id}
+      href={`/teacher/assignments?open=${n.assignmentId}`}
+      onClick={() => readNote(n.id)}
+      style={{
+        display: "block", marginTop: 8, padding: "10px 12px", borderRadius: 10, textDecoration: "none",
+        color: "inherit", border: "1px solid #dfe4ea", background: n.read ? "#fff" : "#eef5ff",
+      }}
+    >
+      <b>{n.student}</b> ({n.className}) submitted {n.subject}: {n.title}
+      <div className="tch-muted" style={{ fontSize: ".8rem" }}>{new Date(n.submittedAt).toLocaleString()}</div>
+    </a>
+  );
+
   async function signIn(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMsg("");
@@ -217,7 +242,7 @@ export default function TeacherPage() {
             <p className="tch-muted">Your classes and subjects</p>
             {msg && <p className="tch-error" role="alert">{msg}</p>}
 
-                      <div className="tch-card" style={{ margin: "14px 0" }}>
+            <div className="tch-card" style={{ margin: "14px 0" }}>
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <h2 style={{ margin: 0 }}>
                   🔔 Notifications
@@ -231,23 +256,47 @@ export default function TeacherPage() {
               </div>
               {notes.length === 0 ? (
                 <p className="tch-muted" style={{ margin: "8px 0 0" }}>No submissions yet. They will appear here when students hand in work.</p>
+              ) : unread === 0 ? (
+                <p className="tch-muted" style={{ margin: "8px 0 0" }}>You are all caught up. Nothing new is waiting.</p>
               ) : (
-                notes.slice(0, 8).map((n) => (
-                  <a
-                    key={n.id}
-                    href={`/teacher/assignments?open=${n.assignmentId}`}
-                    onClick={() => readNote(n.id)}
-                    style={{
-                      display: "block", marginTop: 8, padding: "10px 12px", borderRadius: 10, textDecoration: "none",
-                      color: "inherit", border: "1px solid #dfe4ea", background: n.read ? "#fff" : "#eef5ff",
-                    }}
-                  >
-                    <b>{n.student}</b> ({n.className}) submitted {n.subject}: {n.title}
-                    <div className="tch-muted" style={{ fontSize: ".8rem" }}>{new Date(n.submittedAt).toLocaleString()}</div>
-                  </a>
-                ))
+                shownNotes.map(noteRow)
+              )}
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #c9d3df", background: "#fff", color: "#071f3d", fontWeight: 600, cursor: "pointer" }}
+                >
+                  View all ({notes.length})
+                </button>
               )}
             </div>
+
+            {showAll && (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="All notifications"
+                onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAll(false); }}
+                style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(7,31,61,.55)" }}
+              >
+                <div style={{ width: "100%", maxWidth: 520, maxHeight: "85vh", display: "flex", flexDirection: "column", background: "#fff", borderRadius: 12, borderTop: "5px solid #071f3d", boxShadow: "0 20px 50px rgba(7,31,61,.35)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "16px 18px 8px" }}>
+                    <h2 style={{ margin: 0, fontSize: "1.1rem" }}>🔔 All notifications ({notes.length})</h2>
+                    <button type="button" aria-label="Close" onClick={() => setShowAll(false)} style={{ border: 0, background: "transparent", fontSize: "1.6rem", lineHeight: 1, cursor: "pointer", color: "#55627a" }}>×</button>
+                  </div>
+                  {unread > 0 && (
+                    <div style={{ padding: "0 18px" }}>
+                      <button type="button" className="tch-link" onClick={readAllNotes}>Mark all as read</button>
+                    </div>
+                  )}
+                  <div style={{ overflowY: "auto", padding: "0 18px 18px" }}>
+                    {notes.map(noteRow)}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {me.classes.length === 0 ? (
               <div className="tch-card tch-empty">
                 <h2>No classes yet</h2>
@@ -279,12 +328,12 @@ export default function TeacherPage() {
                   <div className="tch-class-top">
                     <h2>Scores</h2>
                   </div>
-                  <p className="tch-muted">Download your class sheet, fill in CA and Exam scores, and upload it.</p>
+                  <p className="tch-muted">Download a broadsheet for your classes and subjects, fill it in and upload it.</p>
                   <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                     Open scores
                   </span>
                 </a>
-                {me.classes.map((c) => (
+                                {me.classes.map((c) => (
                   <article className="tch-card" key={c.id}>
                     <div className="tch-class-top">
                       <h2>{c.name}</h2>
