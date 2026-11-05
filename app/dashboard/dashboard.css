@@ -69,3 +69,5 @@
   font-size: 0.8rem;
   opacity: 0.85;
 }
+
+.dash-back{background:#c8a369;color:#0b2139;transition:transform .18s}.dash-back:hover{transform:translateX(-2px)}

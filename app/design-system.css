@@ -1,0 +1,7 @@
+/* DKPS unified visual language — presentational only; no portal logic changes. */
+:root{--dkps-navy:#0b2139;--dkps-navy-dark:#071b2e;--dkps-gold:#c8a369;--dkps-gold-light:#e7d2ae;--dkps-paper:#f7f5f0;--dkps-ink:#203047;--dkps-muted:#627184;--dkps-line:#e5e8ed;--dkps-radius:16px;--dkps-shadow:0 12px 35px rgba(7,27,46,.065)}
+html{font-family:Poppins,Arial,Helvetica,sans-serif}
+body{font-family:Poppins,Arial,Helvetica,sans-serif;color:var(--dkps-ink)}
+button,input,select,textarea{font-family:inherit}
+:where(button,a,input,select,textarea):focus-visible{outline:3px solid var(--dkps-gold)!important;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}

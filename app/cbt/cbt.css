@@ -36,3 +36,13 @@
   -webkit-box-shadow: 0 0 0 1000px #fff inset;
   -webkit-text-fill-color: #071f3d;
 }
+
+/* Student / examination workspace */
+.cbt{background:#f7f5f0;color:#203047}.cbt-top{background:linear-gradient(110deg,#071b2e,#143a59);border-bottom:3px solid #c8a369;min-height:72px}
+.cbt-wrap{max-width:850px;margin-top:34px}.cbt-card{border:1px solid #e5e8ed;border-radius:18px;padding:clamp(18px,3vw,30px);box-shadow:0 12px 35px #071b2e0b;margin-bottom:18px}
+.cbt-card h2,.cbt-card h3{color:#0b2139;letter-spacing:-.02em}
+.cbt input{border-radius:11px;border-color:#dce2e9}.cbt-btn{background:#0b2139;border-radius:11px;min-height:44px;transition:background .18s}
+.cbt-btn:hover:not(:disabled){background:#163c5c}.cbt-btn.alt{color:#0b2139;border-color:#c8a369}
+.cbt-opt{border-radius:12px;min-height:52px;border-color:#e5e8ed}.cbt-opt:hover{border-color:#c8a369;background:#faf7f1}
+.cbt-opt.sel{border-color:#c8a369;background:#fbf5e9}.cbt-dot{border-radius:9px}.cbt-dot.cur{outline-color:#c8a369}
+@media(max-width:600px){.cbt-wrap{margin-top:18px;padding-inline:12px}.cbt-top{padding-inline:14px}}

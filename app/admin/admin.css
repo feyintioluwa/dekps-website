@@ -532,3 +532,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Legacy admin views: align with the shared design. */
+.adm-app{--navy:#0b2139;--gold:#c8a369;--bg:#f7f5f0;--line:#e5e8ed}
+.adm-app :is(input,select,textarea){border-radius:11px}.adm-app :is(button,.adm-btn){border-radius:10px}

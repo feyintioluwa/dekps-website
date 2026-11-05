@@ -1864,3 +1864,6 @@ img {
         overflow-wrap: anywhere;
     }
 }
+
+/* Screen-level polish without changing report card print formatting. */
+@media screen{body{background:#f7f5f0}.result-section.show{margin-top:30px}}
