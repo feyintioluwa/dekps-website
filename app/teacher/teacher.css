@@ -57,15 +57,3 @@
   .tch-back-link{display:none}
   .tch-card{padding:18px}
 }
-
-/* Unified teacher portal styling */
-.tch{--navy:#0b2139;--navy2:#143a59;--gold:#c8a369;--bg:#f7f5f0;--line:#e5e8ed;background:var(--bg)}
-.tch-header{background:linear-gradient(110deg,#071b2e,#143a59);border-bottom:3px solid #c8a369}
-.tch-header-in{max-width:1200px;min-height:84px}.tch-main{max-width:1200px;padding-top:36px}
-.tch-main h1{font-size:clamp(1.5rem,3vw,2rem);letter-spacing:-.035em;color:#0b2139}
-.tch-card{border-radius:18px;border-top:3px solid #c8a369;box-shadow:0 12px 35px #071b2e0b;padding:clamp(18px,2.5vw,28px)}
-.tch-card h2{font-size:1.2rem}.tch input{border-radius:11px;border-color:#dce2e9}
-.tch-btn{background:#0b2139;border-radius:11px;transition:background .18s,transform .18s}
-.tch-btn:hover:not(:disabled){background:#163c5c;transform:translateY(-1px)}
-.tch-chip{background:#f4eddf;color:#755522}.tch-grid{gap:20px}
-@media(max-width:600px){.tch-main{padding:22px 14px 40px}.tch-header-in{padding-inline:14px}.tch-grid{grid-template-columns:1fr}}

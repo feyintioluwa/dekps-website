@@ -43,11 +43,3 @@
   .dt-tab.on::after{display:none}
   .dt-badge{right:-12px}
 }
-
-/* Dashboard navigation and action cards */
-.dt-tabs{border-color:#e5e8ed;box-shadow:0 -8px 24px #071b2e0a}
-.dt-tab{border-radius:12px}.dt-tab.on{background:#0b2139}.dt-tab.on::after{background:#c8a369}
-.dt-item{border-color:#e5e8ed;border-radius:15px;box-shadow:0 5px 15px #071b2e06;padding:16px}
-.dt-item-main strong,.dt-h{color:#0b2139}.dt-act{background:#0b2139;border-radius:11px}
-.dt-chip{background:#f5eddf;color:#755522}.dt-bar i{background:#315c7d}
-@media(min-width:900px){.cbt-wrap.dt-wrap{max-width:1150px;grid-template-columns:230px minmax(0,1fr);gap:26px}.dt-tabs{border-radius:16px;padding:10px}}
