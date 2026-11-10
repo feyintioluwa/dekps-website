@@ -16,11 +16,11 @@ import {
 
 import Link from "next/link";
 
-import TeacherHeader from "../components/TeacherHeader";
+import TeacherHeader from "./components/TeacherHeader";
 
-import "../teacher.css";
+import "./teacher.css";
 
-import "./broadsheet.css";
+import "./broadsheet/broadsheet.css";
 
 type Option = {
 
