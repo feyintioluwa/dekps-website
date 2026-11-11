@@ -30,6 +30,8 @@ export default function AdminStudents() {
   const [editName, setEditName] = useState("");
   const [moveId, setMoveId] = useState("");
   const [moveTo, setMoveTo] = useState("");
+  const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
 
   const headers = { "Content-Type": "application/json", "x-admin-key": adminKey };
 
@@ -128,8 +130,26 @@ export default function AdminStudents() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { unlock(); }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (mClassId) { setNotice(""); loadList(mClassId); } }, [mClassId]);
+  useEffect(() => { if (mClassId) { setNotice(""); setSearch(""); loadList(mClassId); } }, [mClassId]);
 
+  // Counts, search and the "same name twice" warning for the Manage students list
+  const activeCount = list.filter((s) => s.is_active).length;
+  const inactiveCount = list.length - activeCount;
+  const q = search.trim().toUpperCase();
+  const matches = (s: Student) => !q || s.name.toUpperCase().includes(q) || s.login_id.toUpperCase().includes(q);
+  const shown = list.filter((s) => (showInactive || s.is_active) && matches(s));
+  const hiddenMatches = showInactive ? 0 : list.filter((s) => !s.is_active && matches(s)).length;
+  const dupNames = (() => {
+    const counts = new Map<string, number>();
+    for (const s of list) {
+      if (!s.is_active) continue;
+      const k = s.name.trim().toUpperCase();
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).filter(([, n]) => n > 1).map(([k]) => k);
+  })();
+
+  const sum = { cursor: "pointer", fontWeight: 700, fontSize: "1.1rem", padding: "10px 0" } as const;
   const small = { padding: "4px 10px", fontSize: 13, marginRight: 6, marginBottom: 4 } as const;
   const cell = { padding: "6px 8px", textAlign: "left", verticalAlign: "top" } as const;
 
@@ -142,7 +162,8 @@ export default function AdminStudents() {
 
         {classes.length > 0 && (
           <>
-            <h2>1. Paste names</h2>
+            <details>
+            <summary style={sum}>1. Paste names (add new students)</summary>
             <select value={classId} onChange={(e) => setClassId(e.target.value)}>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -155,12 +176,17 @@ export default function AdminStudents() {
               {busy ? "Creating..." : "Create students"}
             </button>
 
-            <h2>Link to last session (optional)</h2>
+            </details>
+
+            <details>
+            <summary style={sum}>Link to last session (optional)</summary>
             <div className="adm-row">
               <input placeholder="New Login ID" value={newId} onChange={(e) => setNewId(e.target.value)} />
               <input placeholder="Previous Login ID (blank = unlink)" value={oldId} onChange={(e) => setOldId(e.target.value)} />
               <button onClick={link}>Save link</button>
             </div>
+
+            </details>
 
             <h2>Manage students</h2>
             <select value={mClassId} onChange={(e) => setMClassId(e.target.value)}>
@@ -174,6 +200,25 @@ export default function AdminStudents() {
             {!loadingList && list.length === 0 && <p>No students in this class yet.</p>}
 
             {list.length > 0 && (
+              <>
+                <p style={{ margin: "8px 0", fontWeight: 600 }}>{activeCount} active · {inactiveCount} inactive</p>
+                {dupNames.length > 0 && (
+                  <p className="adm-msg">Two active students share a name: {dupNames.join(", ")}. Check that this is not a double upload.</p>
+                )}
+                <div className="adm-row">
+                  <input placeholder="Search name or Login ID" value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+                    Show inactive ({inactiveCount})
+                  </label>
+                </div>
+                {shown.length === 0 && (
+                  <p>No students match.{hiddenMatches > 0 ? ` ${hiddenMatches} inactive student(s) match. Tick "Show inactive" to see them.` : ""}</p>
+                )}
+              </>
+            )}
+
+            {shown.length > 0 && (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
@@ -185,7 +230,7 @@ export default function AdminStudents() {
                     </tr>
                   </thead>
                   <tbody>
-                    {list.map((s) => (
+                    {shown.map((s) => (
                       <tr key={s.id} style={{ borderTop: "1px solid #ddd", opacity: s.is_active ? 1 : 0.6 }}>
                         <td style={cell}>{s.login_id}</td>
                         <td style={cell}>
