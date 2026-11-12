@@ -475,52 +475,116 @@
 }
 
 /* Match the shared Teacher Portal visual system without altering score logic. */
+
 .tch.bs { font-family: inherit; color: var(--ink); background: var(--bg); }
+
 .tch.bs .bs-container { max-width: 1100px; padding-left: 20px; padding-right: 20px; }
+
 .tch.bs .bs-body { padding-top: 28px; }
+
 .tch.bs .bs-intro h1 { font-size: 1.5rem; color: var(--navy); font-weight: 800; }
+
 .tch.bs .bs-panel, .tch.bs .bs-stat, .tch.bs .bs-empty, .tch.bs .bs-mobile-card { border-color: var(--line); border-radius: 14px; box-shadow: 0 8px 24px rgba(7,31,61,.07); }
+
 .tch.bs .bs-panel { border-top: 4px solid var(--gold); }
+
 .tch.bs .bs-panel h2, .tch.bs .bs-sheet-top h2 { color: var(--navy); font-size: 1.15rem; }
+
 .tch.bs .bs-intro p, .tch.bs .bs-panel-heading p, .tch.bs .bs-sheet-top p { font-size: .9rem; color: var(--muted); }
+
 .tch.bs .bs-save { background: var(--navy); border-radius: 8px; font-family: inherit; }
+
 .tch.bs .bs-save:hover:not(:disabled) { background: var(--navy2); }
+
 .tch.bs .bs-excel-link { color: var(--blue); border-color: var(--line); font-size: .88rem; }
+
 .tch.bs .bs-eyebrow { color: #9a702a; }
+
 .tch.bs .bs-filters label, .tch.bs .bs-tools label { font-family: inherit; }
+
 .tch.bs .bs-filters select, .tch.bs .bs-tools input, .tch.bs .bs-mark { font-family: inherit; border-color: var(--line); }
+
 .tch.bs .bs-filters select:focus, .tch.bs .bs-tools input:focus, .tch.bs .bs-mark:focus { border-color: var(--blue); outline: 2px solid rgba(30,92,152,.12); }
+
 @media(max-width:560px){.tch.bs .bs-container{padding-left:14px;padding-right:14px}}
+
 /* DKPS Broadsheet: align with Teacher Assignments (admin.css + teacher.css).
+
    Visual changes only; no score logic changes. */
+
 .tch.bs{background:#f4f6f9;color:#18212f;font-family:Poppins,Arial,sans-serif}
+
 .tch.bs .bs-body{max-width:1100px;margin:20px auto 60px;padding:26px;background:#fff;border:1px solid #dfe4ea;border-radius:14px;box-shadow:0 10px 30px rgba(7,31,61,.06);min-width:0}
+
 .tch.bs .bs-intro{margin-bottom:12px}
+
 .tch.bs .bs-intro h1{font-size:1.25rem;line-height:1.4;color:#071f3d;font-weight:700;margin:0 0 6px}
+
 .tch.bs .bs-intro p,.tch.bs .bs-panel-heading p,.tch.bs .bs-sheet-top p,.tch.bs .bs-empty p{color:#687385;font-size:.9rem}
+
 .tch.bs .bs-eyebrow{font-size:.78rem;letter-spacing:.04em;color:#687385}
+
 .tch.bs .bs-panel,.tch.bs .bs-empty{box-shadow:none;border:0;border-radius:0;background:transparent}
+
 .tch.bs .bs-selector{padding:0;margin:24px 0;border-top:0}
+
 .tch.bs .bs-panel h2,.tch.bs .bs-sheet-top h2{font-size:1.02rem;color:#071f3d;font-weight:700;margin:26px 0 12px;padding-left:12px;border-left:4px solid #d4ad58}
+
 .tch.bs .bs-filters{gap:10px;margin-top:12px}
+
 .tch.bs .bs-filters label{font-size:.92rem;color:#344054;font-weight:600}
+
 .tch.bs .bs-filters select,.tch.bs .bs-tools input:not([type=checkbox]),.tch.bs .bs-mark{height:auto;min-height:43px;padding:11px 13px;border:1px solid #cfd6df;border-radius:8px;background:#fff;color:#18212f;font:inherit;font-size:.92rem;box-shadow:none}
+
 .tch.bs .bs-filters select:focus,.tch.bs .bs-tools input:focus,.tch.bs .bs-mark:focus{outline:none;border-color:#1e5c98;box-shadow:0 0 0 3px rgba(30,92,152,.12)}
+
 .tch.bs .bs-stats{gap:14px}
+
 .tch.bs .bs-stat{background:#fff;border:1px solid #dfe4ea;border-top:4px solid #d4ad58;border-radius:12px;padding:18px;box-shadow:0 8px 24px rgba(7,31,61,.05)}
+
 .tch.bs .bs-stat>span,.tch.bs .bs-stat small{font-size:.82rem;color:#687385}
+
 .tch.bs .bs-stat strong{font-size:1.9rem;color:#071f3d}
+
 .tch.bs .bs-sheet{border-top:2px dashed #cfd6df;padding-top:8px;margin-top:24px}
+
 .tch.bs .bs-sheet-top{padding-left:0;padding-right:0}
+
 .tch.bs .bs-table-wrap{border:1px solid #dfe4ea;border-radius:8px;overflow-x:auto}
+
 .tch.bs .bs-table{font-size:.9rem;border-collapse:collapse}
+
 .tch.bs .bs-table th{background:#071f3d;color:#fff;text-align:left;padding:10px;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em}
+
 .tch.bs .bs-table td{padding:10px;border-bottom:1px solid #e8ebef}
+
 .tch.bs .bs-table tbody tr:nth-child(even){background:#fafbfc}
+
 .tch.bs .bs-save,.tch.bs .bs-excel-link{background:#071f3d;color:#fff;border:0;border-radius:8px;padding:11px 20px;font-family:inherit;font-size:.9rem;font-weight:700;text-decoration:none}
+
 .tch.bs .bs-save:hover:not(:disabled),.tch.bs .bs-excel-link:hover{background:#0c315d;color:#fff}
+
 .tch.bs .bs-save-actions>button:not(:first-child){background:#e3e8ef;color:#071f3d;border:0}
+
 .tch.bs .bs-save-actions>button:not(:first-child):hover:not(:disabled){background:#d7e0ea}
+
 .tch.bs .bs-mobile-card{border:1px solid #e3e8ef;border-radius:12px;box-shadow:none;background:#fff}
+
 .tch.bs .bs-footer{border-color:#dfe4ea}
+
 @media(max-width:640px){.tch.bs .bs-body{margin:14px 12px 32px;padding:16px}.tch.bs .bs-filters{grid-template-columns:1fr}.tch.bs .bs-stat{padding:14px}}
+
+/* Keyboard-friendly score entry: additions to the existing DKPS design. */
+.bs .bs-mobile-mode, .bs .bs-quick { display: none; }
+@media (max-width: 640px) {
+  .tch.bs .bs-mobile-mode { display: flex; gap: 8px; margin: 14px 0; }
+  .tch.bs .bs-mobile-mode button { flex: 1; padding: 11px 12px; border: 1px solid #cfd6df; border-radius: 8px; background: #fff; color: #071f3d; font: inherit; font-weight: 700; cursor: pointer; }
+  .tch.bs .bs-mobile-mode button.bs-mode-active { background: #071f3d; color: #fff; border-color: #071f3d; }
+  .tch.bs .bs-mobile-list.bs-mobile-list-hidden { display: none; }
+  .tch.bs .bs-quick { display: block; padding: 16px; margin-bottom: 18px; background: #fff; border: 1px solid #e3e8ef; border-top: 4px solid #d4ad58; border-radius: 12px; }
+  .tch.bs .bs-quick .bs-mobile-fields { margin-top: 16px; }
+  .tch.bs .bs-quick-nav { display: flex; gap: 10px; margin-top: 16px; }
+  .tch.bs .bs-quick-nav button { flex: 1; min-height: 44px; padding: 10px; border: 1px solid #071f3d; border-radius: 8px; background: #071f3d; color: #fff; font: inherit; font-weight: 700; }
+  .tch.bs .bs-quick-nav button:disabled { opacity: .4; cursor: not-allowed; }
+  .tch.bs .bs-quick-help { display: block; margin-top: 12px; color: #687385; line-height: 1.5; }
+}
