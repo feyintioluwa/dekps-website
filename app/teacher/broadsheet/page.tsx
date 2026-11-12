@@ -3,6 +3,7 @@
 import {
 
   KeyboardEvent as ReactKeyboardEvent,
+
   MouseEvent,
 
   useCallback,
@@ -133,6 +134,19 @@ const API = "/api/teacher/scores";
 
 const EMPTY: Entry = { ca: "", exam: "" };
 
+// One calculation rule for desktop, mobile list, and mobile quick entry.
+function calculateScore(entry: Entry): { total: number | null; complete: boolean; invalid: boolean } {
+  const validPart = (value: string, max: number) =>
+    value === "" || (/^\d{1,2}$/.test(value) && Number(value) <= max);
+  const invalid = !validPart(entry.ca, 40) || !validPart(entry.exam, 60);
+  const complete = !invalid && entry.ca !== "" && entry.exam !== "";
+  return {
+    total: complete ? Number(entry.ca) + Number(entry.exam) : null,
+    complete,
+    invalid,
+  };
+}
+
 function buildEntries(
 
   data: ClassData,
@@ -248,13 +262,18 @@ function BroadsheetInner() {
   const [refreshing, setRefreshing] = useState(false);
 
   const requestId = useRef(0);
-  // Navigation state is shared by the existing desktop and mobile inputs.
-  const [mobileQuick, setMobileQuick] = useState(false);
-  const [quickStudentId, setQuickStudentId] = useState("");
-  const [quickKind, setQuickKind] = useState<Kind>("ca");
-  const scoreInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const quickInputRefs = useRef<Record<Kind, HTMLInputElement | null>>({ ca: null, exam: null });
 
+  // Navigation state is shared by the existing desktop and mobile inputs.
+
+  const [mobileQuick, setMobileQuick] = useState(false);
+
+  const [quickStudentId, setQuickStudentId] = useState("");
+
+  const [quickKind, setQuickKind] = useState<Kind>("ca");
+
+  const scoreInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const quickInputRefs = useRef<Record<Kind, HTMLInputElement | null>>({ ca: null, exam: null });
 
   // A problem the teacher must notice: shown on the page and as a red message
 
@@ -605,60 +624,105 @@ function BroadsheetInner() {
   }, [eligible, values, search, missingOnly]);
 
   const quickIndex = Math.max(0, visible.findIndex((student) => student.id === quickStudentId));
+
   const quickStudent = visible[quickIndex] ?? null;
 
   // Keep the current student in view when filters, class or subject change.
+
   useEffect(() => {
+
     if (!visible.length) {
+
       setQuickStudentId("");
+
     } else if (!visible.some((student) => student.id === quickStudentId)) {
+
       setQuickStudentId(visible[0].id);
+
     }
+
   }, [visible, quickStudentId]);
 
   function moveDesktop(studentId: string, kind: Kind, direction: number) {
+
     const index = visible.findIndex((student) => student.id === studentId);
+
     if (index < 0) return;
+
     const next = visible[index + direction];
+
     if (!next) return;
+
     scoreInputRefs.current[`${next.id}:${kind}`]?.focus();
+
     scoreInputRefs.current[`${next.id}:${kind}`]?.select();
+
   }
 
   function desktopKeyDown(event: ReactKeyboardEvent<HTMLInputElement>, studentId: string, kind: Kind) {
+
     if (event.key === "Escape") { event.currentTarget.blur(); return; }
+
     if (event.key === "Enter" || event.key === "ArrowDown" || event.key === "ArrowUp") {
+
       event.preventDefault();
+
       moveDesktop(studentId, kind, event.key === "ArrowUp" || (event.key === "Enter" && event.shiftKey) ? -1 : 1);
+
     }
+
   }
 
   function moveQuick(direction: number) {
+
     const next = visible[quickIndex + direction];
+
     if (!next) return;
+
     setQuickStudentId(next.id);
+
     requestAnimationFrame(() => quickInputRefs.current[quickKind]?.focus());
+
   }
 
   function quickKeyDown(event: ReactKeyboardEvent<HTMLInputElement>, kind: Kind) {
+
     if (event.key === "Escape") { event.currentTarget.blur(); return; }
+
     if (event.key !== "Enter") return;
+
     event.preventDefault();
+
     if (event.shiftKey) { moveQuick(-1); return; }
+
     if (kind === "ca") {
+
       setQuickKind("exam");
+
       quickInputRefs.current.exam?.focus();
+
       quickInputRefs.current.exam?.select();
+
     } else {
+
       setQuickKind("ca");
+
       const next = visible[quickIndex + 1];
+
       if (next) {
+
         setQuickStudentId(next.id);
+
         requestAnimationFrame(() => quickInputRefs.current.ca?.focus());
+
       } else {
+
         event.currentTarget.blur();
+
       }
+
     }
+
   }
 
   function edit(
@@ -1137,30 +1201,22 @@ function BroadsheetInner() {
 
   }
 
-  const complete = eligible.filter((student) => {
+  const complete = eligible.filter((student) =>
+    calculateScore(values[student.id] ?? EMPTY).complete
+  ).length;
 
-    const entry = values[student.id] ?? EMPTY;
-
-    return entry.ca !== "" && entry.exam !== "";
-
+  const caEntered = eligible.filter((student) => {
+    const ca = (values[student.id] ?? EMPTY).ca;
+    return ca !== "" && /^\d{1,2}$/.test(ca) && Number(ca) <= 40;
   }).length;
 
-  const caEntered = eligible.filter(
-
-    (student) => (values[student.id] ?? EMPTY).ca !== ""
-
-  ).length;
-
-  const examEntered = eligible.filter(
-
-    (student) => (values[student.id] ?? EMPTY).exam !== ""
-
-  ).length;
+  const examEntered = eligible.filter((student) => {
+    const exam = (values[student.id] ?? EMPTY).exam;
+    return exam !== "" && /^\d{1,2}$/.test(exam) && Number(exam) <= 60;
+  }).length;
 
   const progress = eligible.length
-
     ? Math.round((complete / eligible.length) * 100)
-
     : 0;
 
   const chosenClass = classes.find(
@@ -1727,21 +1783,7 @@ function BroadsheetInner() {
 
                         values[student.id] ?? EMPTY;
 
-                      const isComplete =
-
-                        entry.ca !== "" &&
-
-                        entry.exam !== "";
-
-                      const invalid =
-
-                        (entry.ca !== "" &&
-
-                          Number(entry.ca) > 40) ||
-
-                        (entry.exam !== "" &&
-
-                          Number(entry.exam) > 60);
+                      const { complete: isComplete, invalid, total } = calculateScore(entry);
 
                       return (
 
@@ -1774,8 +1816,11 @@ function BroadsheetInner() {
                               <input
 
                                 ref={(node) => { scoreInputRefs.current[`${student.id}:${kind}`] = node; }}
+
                                   onKeyDown={(event) => desktopKeyDown(event, student.id, kind)}
+
                                   className="bs-mark"
+
                                   aria-label={`${student.name} ${kind === "ca"
 
                                     ? "CA"
@@ -1834,9 +1879,7 @@ function BroadsheetInner() {
 
                                   ? "—"
 
-                                  : Number(entry.ca) +
-
-                                    Number(entry.exam)}
+                                  : total}
 
                             </strong>
 
@@ -1895,52 +1938,96 @@ function BroadsheetInner() {
               </div>
 
               <div className="bs-mobile-mode" role="group" aria-label="Mobile score entry mode">
+
                   <button type="button" className={!mobileQuick ? "bs-mode-active" : ""} onClick={() => setMobileQuick(false)} aria-pressed={!mobileQuick}>List view</button>
+
                   <button type="button" className={mobileQuick ? "bs-mode-active" : ""} onClick={() => setMobileQuick(true)} aria-pressed={mobileQuick}>Quick entry</button>
+
                 </div>
+
                 {mobileQuick && quickStudent && (
+
                   <section className="bs-quick" aria-label="Quick score entry">
+
                     <div className="bs-mobile-card-head">
+
                       <div>
+
                         <small>STUDENT {quickIndex + 1} OF {visible.length}</small>
+
                         <h3>{quickStudent.name}</h3>
+
                         <p>{quickStudent.login_id}</p>
+
                       </div>
+
                     </div>
+
                     <div className="bs-mobile-fields">
+
                       {(["ca", "exam"] as const).map((kind) => (
+
                         <label key={kind}>
+
                           <span>{kind === "ca" ? "CA" : "Exam"} <small>/ {kind === "ca" ? 40 : 60}</small></span>
+
                           <input
+
                             ref={(node) => { quickInputRefs.current[kind] = node; }}
+
                             className="bs-mark"
+
                             aria-label={`${quickStudent.name} ${kind === "ca" ? "CA" : "Exam"}`}
+
                             inputMode="numeric"
+
                             enterKeyHint="next"
+
                             value={(values[quickStudent.id] ?? EMPTY)[kind]}
+
                             disabled={readOnly || saving || refreshing || conflict}
+
                             onFocus={() => setQuickKind(kind)}
+
                             onKeyDown={(event) => quickKeyDown(event, kind)}
+
                             onChange={(event) => edit(quickStudent.id, kind, event.target.value)}
+
                             placeholder="—"
+
                           />
+
                         </label>
+
                       ))}
+
                       <div className="bs-mobile-total">
+
                         <span>Total <small>/ 100</small></span>
+
                         <strong>{(() => {
-                          const entry = values[quickStudent.id] ?? EMPTY;
-                          return entry.ca === "" || entry.exam === "" ? "—" : Number(entry.ca) > 40 || Number(entry.exam) > 60 ? "Invalid" : Number(entry.ca) + Number(entry.exam);
-                        })()}</strong>
+                            const result = calculateScore(values[quickStudent.id] ?? EMPTY);
+                            return result.invalid ? "Invalid" : result.total ?? "—";
+                          })()}</strong>
+
                       </div>
+
                     </div>
+
                     <div className="bs-quick-nav">
+
                       <button type="button" disabled={quickIndex === 0} onClick={() => moveQuick(-1)}>← Previous</button>
+
                       <button type="button" disabled={quickIndex === visible.length - 1} onClick={() => moveQuick(1)}>Next student →</button>
+
                     </div>
+
                     <small className="bs-quick-help">Use the numeric keypad. Enter moves from CA to Exam, then to the next student. Scores are saved only when you tap Save changed scores.</small>
+
                   </section>
+
                 )}
+
                 <div className={"bs-mobile-list" + (mobileQuick ? " bs-mobile-list-hidden" : "")}>
 
                 {visible.map((student, index) => {
@@ -1949,21 +2036,7 @@ function BroadsheetInner() {
 
                     values[student.id] ?? EMPTY;
 
-                  const isComplete =
-
-                    entry.ca !== "" &&
-
-                    entry.exam !== "";
-
-                  const invalid =
-
-                    (entry.ca !== "" &&
-
-                      Number(entry.ca) > 40) ||
-
-                    (entry.exam !== "" &&
-
-                      Number(entry.exam) > 60);
+                  const { complete: isComplete, invalid, total } = calculateScore(entry);
 
                   return (
 
@@ -2133,17 +2206,7 @@ function BroadsheetInner() {
 
                           <strong>
 
-                            {invalid
-
-                              ? "Invalid"
-
-                              : isComplete
-
-                                ? Number(entry.ca) +
-
-                                  Number(entry.exam)
-
-                                : "—"}
+                            {invalid ? "Invalid" : total ?? "—"}
 
                           </strong>
 
