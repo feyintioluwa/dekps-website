@@ -1280,7 +1280,7 @@ function BroadsheetInner() {
 
           <Link
 
-            className="bs-header-link"
+            className="bs-dashboard-back"
 
             href="/teacher"
 
@@ -1320,19 +1320,23 @@ function BroadsheetInner() {
 
           </div>
 
-          <Link
+          <div className="bs-management-links">
+  <Link
+    className="bs-excel-link"
+    href="/teacher/scores"
+    onClick={(event) => void leave(event, "/teacher/scores")}
+  >
+    ↗ Excel score management
+  </Link>
 
-            className="bs-excel-link"
-
-            href="/teacher/scores"
-
-            onClick={(event) => void leave(event, "/teacher/scores")}
-
-          >
-
-            ↗ Excel score management
-
-          </Link>
+  <Link
+    className="bs-excel-link bs-history-link"
+    href="/teacher/score-history"
+    onClick={(event) => void leave(event, "/teacher/score-history")}
+  >
+    ↺ Score editing history
+  </Link>
+</div>
 
         </div>
 
