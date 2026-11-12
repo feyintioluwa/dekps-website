@@ -957,29 +957,18 @@ export async function POST(request: Request) {
 
 
 
-    const functionName = protectedSave
+    const functionName = "teacher_save_scores_with_history";
 
-      ? "teacher_save_scores_protected"
+const batchSize = 400;
 
-      : "teacher_save_scores";
-
-
-
-    const batchSize = protectedSave ? 400 : 400;
-
-
-
-    for (let i = 0; i < out.length; i += batchSize) {
-
-      const { data, error } = await db.rpc(functionName, {
-
-        p_term: term.id,
-
-        p_class: classId,
-
-        p_rows: out.slice(i, i + batchSize),
-
-      });
+for (let i = 0; i < out.length; i += batchSize) {
+  const { data, error } = await db.rpc(functionName, {
+    p_term: term.id,
+    p_class: classId,
+    p_rows: out.slice(i, i + batchSize),
+    p_teacher_id: t.teacher.id,
+    p_protected: protectedSave,
+  });
 
 
 
