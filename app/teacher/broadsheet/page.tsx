@@ -1,5 +1,6 @@
 "use client";
 import {
+  MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -8,6 +9,13 @@ import {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import {
+  DialogProvider,
+  useConfirm,
+  useNotice,
+  useToast,
+} from "@/lib/dialog";
 import "../teacher.css";
 import "./broadsheet.css";
 type Option = {
@@ -91,7 +99,11 @@ function errorMessage(
 ): string {
   return error instanceof Error ? error.message : fallback;
 }
-export default function TeacherBroadsheet() {
+function BroadsheetInner() {
+  const ask = useConfirm();
+  const toast = useToast();
+  const notice = useNotice();
+  const router = useRouter();
   const [classes, setClasses] = useState<Option[]>([]);
   const [term, setTerm] = useState<Term>(null);
   const [classId, setClassId] = useState("");
@@ -111,6 +123,11 @@ export default function TeacherBroadsheet() {
   const [conflict, setConflict] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const requestId = useRef(0);
+  // A problem the teacher must notice: shown on the page and as a red message
+  function problem(text: string) {
+    setMessage(text);
+    toast(text, "err", "Could not save");
+  }
   const loadClass = useCallback(async (id: string) => {
     const request = ++requestId.current;
     setLoading(true);
@@ -232,6 +249,32 @@ export default function TeacherBroadsheet() {
       }),
     [eligible, values, original]
   );
+  // Closing the tab or reloading with unsaved marks: the browser asks first
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  // Leaving this page through a link: ask first when there are unsaved marks
+  async function leave(
+    event: MouseEvent<HTMLAnchorElement>,
+    href: string
+  ) {
+    if (!dirty) return;
+    event.preventDefault();
+    const go = await ask({
+      title: "Unsaved changes",
+      message:
+        "You have unsaved changes. Are you sure you want to leave?",
+      cancelText: "Stay",
+      confirmText: "Leave",
+    });
+    if (go) router.push(href);
+  }
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return eligible.filter((student) => {
@@ -293,7 +336,7 @@ export default function TeacherBroadsheet() {
           continue;
         }
         if (current[kind] === "") {
-          setMessage(
+          problem(
             "Clearing a saved score is not supported. " +
               "Restore the original value before saving."
           );
@@ -306,7 +349,7 @@ export default function TeacherBroadsheet() {
           value < 0 ||
           value > limit
         ) {
-          setMessage(
+          problem(
             `${student.name}: ${kind.toUpperCase()} ` +
               `must be between 0 and ${limit}.`
           );
@@ -336,7 +379,7 @@ export default function TeacherBroadsheet() {
       0
     );
     if (entryCount > 400) {
-      setMessage(
+      problem(
         "This save contains more than 400 changed marks. " +
           "Save a smaller selection of changes."
       );
@@ -363,12 +406,20 @@ export default function TeacherBroadsheet() {
           result.code === "SCORE_CONFLICT"
         ) {
           setConflict(true);
-          setMessage(
+          const text =
             "Score conflict detected. Another save changed " +
-              "one or more marks. Nothing from this save was " +
-              "applied. Your edits are still visible. " +
-              "Review them, then refresh the broadsheet."
-          );
+            "one or more marks. Nothing from this save was " +
+            "applied. Your edits are still visible. " +
+            "Review them, then refresh the broadsheet.";
+          setMessage(text);
+          void notice({
+            kind: "err",
+            title: "Score conflict",
+            message:
+              "Another save changed one or more marks, so nothing from this save was applied. " +
+              "Your edits are still on the page. Review them, then refresh the broadsheet.",
+            buttonText: "Review my edits",
+          });
           return;
         }
         throw new Error(
@@ -382,11 +433,19 @@ export default function TeacherBroadsheet() {
       const fresh = await freshResponse.json();
       if (!freshResponse.ok) {
         setConflict(true);
-        setMessage(
+        const text =
           "The save was accepted, but the latest scores " +
-            "could not be reloaded. Do not save again yet. " +
-            "Refresh the broadsheet to verify the marks."
-        );
+          "could not be reloaded. Do not save again yet. " +
+          "Refresh the broadsheet to verify the marks.";
+        setMessage(text);
+        void notice({
+          kind: "info",
+          title: "Saved, but not reloaded",
+          message:
+            "Your scores were saved, but the latest marks could not be reloaded. " +
+            "Do not save again yet. Refresh the broadsheet to check them.",
+          buttonText: "OK",
+        });
         return;
       }
       const freshData = fresh as ClassData;
@@ -396,17 +455,27 @@ export default function TeacherBroadsheet() {
       setValues(next);
       setOriginal(next);
       setConflict(false);
+      const savedCount = result.saved ?? 0;
       setMessage(
-        `${result.saved ?? 0} score entries saved. ` +
+        `${savedCount} score entries saved. ` +
           "Results have not been published."
       );
+      // The success message appears only now, after the save really worked
+      void notice({
+        kind: "ok",
+        title: "Scores saved!",
+        message:
+          `${savedCount} score ${savedCount === 1 ? "entry was" : "entries were"} saved successfully. ` +
+          "Results have not been published.",
+        buttonText: "Done",
+      });
     } catch (error) {
-      setMessage(
-        errorMessage(
-          error,
-          "Saving failed. Please try again."
-        )
+      const text = errorMessage(
+        error,
+        "Saving failed. Please try again."
       );
+      setMessage(text);
+      toast(text, "err", "Could not save");
     } finally {
       setSaving(false);
     }
@@ -417,10 +486,14 @@ export default function TeacherBroadsheet() {
     }
     if (
       dirty &&
-      !window.confirm(
-        "Refreshing will discard your unsaved edits. " +
-          "Continue?"
-      )
+      !(await ask({
+        title: "Discard unsaved edits?",
+        message:
+          "Refreshing will discard your unsaved edits. " +
+          "Continue?",
+        cancelText: "Stay",
+        confirmText: "Refresh anyway",
+      }))
     ) {
       return;
     }
@@ -446,10 +519,18 @@ export default function TeacherBroadsheet() {
       setMessage(
         "Broadsheet refreshed with the latest saved marks."
       );
-    } catch (error) {
-      setMessage(
-        errorMessage(error, "Could not refresh scores.")
+      toast(
+        "The latest saved marks are now showing.",
+        "ok",
+        "Broadsheet refreshed"
       );
+    } catch (error) {
+      const text = errorMessage(
+        error,
+        "Could not refresh scores."
+      );
+      setMessage(text);
+      toast(text, "err", "Could not refresh");
     } finally {
       setRefreshing(false);
     }
@@ -495,6 +576,7 @@ export default function TeacherBroadsheet() {
           <Link
             className="bs-header-link"
             href="/teacher"
+            onClick={(event) => void leave(event, "/teacher")}
           >
             ← Back to dashboard
           </Link>
@@ -515,6 +597,7 @@ export default function TeacherBroadsheet() {
           <Link
             className="bs-excel-link"
             href="/teacher/scores"
+            onClick={(event) => void leave(event, "/teacher/scores")}
           >
             ↗ Excel score management
           </Link>
@@ -556,16 +639,20 @@ export default function TeacherBroadsheet() {
               <select
                 value={classId}
                 disabled={saving || refreshing}
-                onChange={(event) => {
+                onChange={async (event) => {
+                  const id = event.target.value;
                   if (
                     dirty &&
-                    !window.confirm(
-                      "Discard unsaved changes and switch class?"
-                    )
+                    !(await ask({
+                      title: "Unsaved changes",
+                      message:
+                        "You have unsaved changes. Switching class will discard them.",
+                      cancelText: "Stay",
+                      confirmText: "Discard and switch",
+                    }))
                   ) {
                     return;
                   }
-                  const id = event.target.value;
                   requestId.current++;
                   setClassId(id);
                   setData(null);
@@ -597,16 +684,21 @@ export default function TeacherBroadsheet() {
               <select
                 value={subjectId}
                 disabled={!data || saving || refreshing}
-                onChange={(event) => {
+                onChange={async (event) => {
+                  const id = event.target.value;
                   if (
                     dirty &&
-                    !window.confirm(
-                      "Discard unsaved changes and switch subject?"
-                    )
+                    !(await ask({
+                      title: "Unsaved changes",
+                      message:
+                        "You have unsaved changes. Switching subject will discard them.",
+                      cancelText: "Stay",
+                      confirmText: "Discard and switch",
+                    }))
                   ) {
                     return;
                   }
-                  chooseSubject(event.target.value);
+                  chooseSubject(id);
                 }}
               >
                 <option value="">
@@ -995,5 +1087,13 @@ export default function TeacherBroadsheet() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function TeacherBroadsheet() {
+  return (
+    <DialogProvider>
+      <BroadsheetInner />
+    </DialogProvider>
   );
 }

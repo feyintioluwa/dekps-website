@@ -1,5 +1,7 @@
 "use client";
 
+import "./dialog.css";
+
 import {
   createContext,
   KeyboardEvent as ReactKeyboardEvent,
@@ -24,17 +26,32 @@ export type ConfirmOpts = {
   typeToConfirm?: string;
 };
 
-type Ask = (o: ConfirmOpts) => Promise<boolean>;
 export type ToastKind = "ok" | "err" | "info";
-type Show = (message: string, kind?: ToastKind) => void;
+
+/** A one-button message: "Scores saved!" with a Done button. */
+export type NoticeOpts = {
+  title?: string;
+  message: string;
+  kind?: ToastKind;
+  buttonText?: string;
+};
+
+type Ask = (o: ConfirmOpts) => Promise<boolean>;
+type Show = (message: string, kind?: ToastKind, title?: string) => void;
+type Notice = (o: NoticeOpts) => Promise<void>;
 
 const AskCtx = createContext<Ask>(async () => false);
 const ToastCtx = createContext<Show>(() => {});
+const NoticeCtx = createContext<Notice>(async () => {});
 
 /** const ask = useConfirm();  if (!(await ask({ message: "Sure?" }))) return; */
 export const useConfirm = () => useContext(AskCtx);
-/** const toast = useToast();  toast("Saved.", "ok"); */
+
+/** const toast = useToast();  toast("Saved.", "ok");   (an optional 3rd argument sets the title) */
 export const useToast = () => useContext(ToastCtx);
+
+/** const notice = useNotice();  await notice({ title: "Scores saved!", message: "..." }); */
+export const useNotice = () => useContext(NoticeCtx);
 
 /* ------------------------------- helpers ------------------------------- */
 
@@ -47,40 +64,23 @@ function kindOf(text: string): ToastKind {
   return "info";
 }
 
-const CSS = `
-.dk-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:16px;background:rgba(7,31,61,.6);font-family:Poppins,Arial,Helvetica,sans-serif;animation:dk-fade .15s ease-out}
-.dk-card{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.35);animation:dk-pop .18s ease-out}
-.dk-bar{height:6px;background:var(--gold,#d4ad58)}
-.dk-card.danger .dk-bar{background:var(--red,#9e1824)}
-.dk-body{padding:22px}
-.dk-title{margin:0 0 8px;color:var(--navy,#071f3d);font-size:1.15rem;font-weight:800}
-.dk-msg{margin:0;color:#18212f;font-size:.92rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
-.dk-input{width:100%;height:46px;margin-top:14px;padding:0 12px;border:1px solid var(--line,#dfe4ea);border-radius:8px;font:inherit;outline:none}
-.dk-input:focus{border-color:var(--blue,#1e5c98);box-shadow:0 0 0 3px rgba(30,92,152,.14)}
-.dk-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
-.dk-btn{min-height:44px;padding:0 20px;border-radius:8px;font:inherit;font-weight:700;cursor:pointer;border:2px solid var(--navy,#071f3d)}
-.dk-btn.cancel{background:#fff;color:var(--navy,#071f3d)}
-.dk-btn.cancel:hover{background:#edf3fa}
-.dk-btn.go{background:var(--navy,#071f3d);color:#fff}
-.dk-btn.go:hover:not(:disabled){background:var(--navy-light,#0c315d)}
-.dk-card.danger .dk-btn.go{background:var(--red,#9e1824);border-color:var(--red,#9e1824)}
-.dk-card.danger .dk-btn.go:hover:not(:disabled){background:#7d121c}
-.dk-btn:disabled{opacity:.45;cursor:not-allowed}
-.dk-btn:focus-visible{outline:3px solid rgba(212,173,88,.8);outline-offset:2px}
-.dk-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1100;display:flex;align-items:flex-start;gap:12px;width:max-content;max-width:min(560px,calc(100vw - 28px));padding:13px 14px 13px 16px;background:#fff;color:#18212f;border-radius:10px;border-left:6px solid var(--navy,#071f3d);box-shadow:0 12px 32px rgba(7,31,61,.28);font-family:Poppins,Arial,Helvetica,sans-serif;font-size:.9rem;line-height:1.45;font-weight:600;animation:dk-up .2s ease-out}
-.dk-toast.ok{border-left-color:#138a57}
-.dk-toast.err{border-left-color:var(--red,#9e1824)}
-.dk-toast span{flex:1;white-space:pre-wrap;overflow-wrap:anywhere}
-.dk-toast button{flex:none;border:0;background:none;color:#667085;font-size:1.25rem;line-height:1;cursor:pointer;padding:0 2px}
-@keyframes dk-fade{from{opacity:0}to{opacity:1}}
-@keyframes dk-pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
-@keyframes dk-up{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
-@media (max-width:520px){
-  .dk-actions{flex-direction:column-reverse}
-  .dk-btn{width:100%}
+const TOAST_TITLE: Record<ToastKind, string> = { ok: "Done", err: "Something went wrong", info: "Notice" };
+const NOTICE_TITLE: Record<ToastKind, string> = { ok: "Done!", err: "Something went wrong", info: "Notice" };
+
+type IconKind = "ok" | "warn" | "err" | "info";
+
+function Icon({ kind, size = 28 }: { kind: IconKind; size?: number }) {
+  const p = {
+    width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+    strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true,
+  } as const;
+  if (kind === "ok") return <svg {...p}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>;
+  if (kind === "warn") return <svg {...p}><path d="M12 3.5l9.5 16.5h-19L12 3.5z" /><path d="M12 10v4.5" /><path d="M12 17.6h.01" /></svg>;
+  if (kind === "err") return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M9 9l6 6M15 9l-6 6" /></svg>;
+  return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 7.8h.01" /></svg>;
 }
-@media (prefers-reduced-motion:reduce){.dk-overlay,.dk-card,.dk-toast{animation:none}}
-`;
+
+type Dlg = { type: "confirm"; o: ConfirmOpts } | { type: "notice"; o: NoticeOpts };
 
 /* ------------------------------- provider ------------------------------- */
 
@@ -95,38 +95,55 @@ export function DialogProvider({
    */
   watchMessages?: boolean;
 }) {
-  const [o, setO] = useState<ConfirmOpts | null>(null);
+  const [dlg, setDlg] = useState<Dlg | null>(null);
   const [typed, setTyped] = useState("");
-  const [toast, setToast] = useState<{ id: number; text: string; kind: ToastKind } | null>(null);
-
+  const [toast, setToast] = useState<{ id: number; text: string; kind: ToastKind; title: string } | null>(null);
   const resolver = useRef<((v: boolean) => void) | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const counter = useRef(0);
+  const last = useRef<{ text: string; at: number }>({ text: "", at: 0 });
+
+  const open = useCallback((d: Dlg, res: (v: boolean) => void) => {
+    resolver.current?.(false); // a newer question replaces an unanswered one
+    resolver.current = res;
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setTyped("");
+    setDlg(d);
+  }, []);
 
   const ask = useCallback<Ask>(
-    (opts) =>
-      new Promise<boolean>((res) => {
-        resolver.current?.(false); // a newer question replaces an unanswered one
-        resolver.current = res;
-        setTyped("");
-        setO(opts);
-      }),
-    []
+    (opts) => new Promise<boolean>((res) => open({ type: "confirm", o: opts }, res)),
+    [open]
+  );
+
+  const notice = useCallback<Notice>(
+    (opts) => new Promise<void>((res) => open({ type: "notice", o: opts }, () => res())),
+    [open]
   );
 
   const close = useCallback((v: boolean) => {
     resolver.current?.(v);
     resolver.current = null;
-    setO(null);
+    setDlg(null);
+    // give the keyboard focus back to the button that opened the dialog
+    const el = opener.current;
+    opener.current = null;
+    if (el) setTimeout(() => { if (el.isConnected) el.focus(); }, 0);
   }, []);
 
-  const show = useCallback<Show>((text, kind) => {
+  const show = useCallback<Show>((text, kind, title) => {
     const msg = text.trim();
     if (!msg) return;
+    // no repeated popup for the same message fired twice in a row
+    const now = Date.now();
+    if (last.current.text === msg && now - last.current.at < 1500) return;
+    last.current = { text: msg, at: now };
     clearTimeout(timer.current);
     counter.current += 1;
-    setToast({ id: counter.current, text: msg, kind: kind ?? kindOf(msg) });
+    const k = kind ?? kindOf(msg);
+    setToast({ id: counter.current, text: msg, kind: k, title: title ?? TOAST_TITLE[k] });
     // short messages ~4-6s, long ones (lists of names etc.) up to 20s
     const ms = Math.min(20000, Math.max(4000, 3000 + msg.length * 45));
     timer.current = setTimeout(() => setToast(null), ms);
@@ -134,13 +151,13 @@ export function DialogProvider({
 
   // Escape closes the dialog
   useEffect(() => {
-    if (!o) return;
+    if (!dlg) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close(false);
+      if (e.key === "Escape") close(dlg.type === "notice");
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [o, close]);
+  }, [dlg, close]);
 
   // Admin pages: mirror their .adm-msg box as a toast
   useEffect(() => {
@@ -171,40 +188,45 @@ export function DialogProvider({
     );
     if (items.length === 0) return;
     const first = items[0];
-    const last = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    const lastEl = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastEl.focus(); }
+    else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); first.focus(); }
   }
 
-  const need = o?.typeToConfirm;
+  const isConfirm = dlg?.type === "confirm";
+  const c = dlg?.type === "confirm" ? dlg.o : null;
+  const n = dlg?.type === "notice" ? dlg.o : null;
+  const need = c?.typeToConfirm;
   const ready = !need || typed.trim().toUpperCase() === need.trim().toUpperCase();
+  const iconKind: IconKind = c ? "warn" : (n?.kind ?? "ok");
+  const title = c
+    ? (c.title ?? (c.danger ? "Please confirm" : "Confirm"))
+    : (n?.title ?? NOTICE_TITLE[n?.kind ?? "ok"]);
+  const message = c?.message ?? n?.message ?? "";
 
   return (
     <AskCtx.Provider value={ask}>
       <ToastCtx.Provider value={show}>
-        {children}
-        <style>{CSS}</style>
+        <NoticeCtx.Provider value={notice}>
+          {children}
 
-        {o && (
-          <div className="dk-overlay" onClick={() => close(false)}>
-            <div
-              ref={cardRef}
-              className={"dk-card" + (o.danger ? " danger" : "")}
-              role={o.danger ? "alertdialog" : "dialog"}
-              aria-modal="true"
-              aria-labelledby="dk-title"
-              aria-describedby="dk-msg"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={trapTab}
-            >
-              <div className="dk-bar" />
-              <div className="dk-body">
-                <h3 className="dk-title" id="dk-title">
-                  {o.title ?? (o.danger ? "Please confirm" : "Confirm")}
-                </h3>
-                <p className="dk-msg" id="dk-msg">{o.message}</p>
+          {dlg && (
+            <div className="dk-overlay" onClick={() => close(!isConfirm)}>
+              <div
+                ref={cardRef}
+                className={"dk-card" + (c?.danger ? " danger" : "")}
+                role={c?.danger || n?.kind === "err" ? "alertdialog" : "dialog"}
+                aria-modal="true"
+                aria-labelledby="dk-title"
+                aria-describedby="dk-msg"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={trapTab}
+              >
+                <div className={`dk-icon ${iconKind}`}><Icon kind={iconKind} /></div>
+                <h3 className="dk-title" id="dk-title">{title}</h3>
+                <p className="dk-msg" id="dk-msg">{message}</p>
 
-                {need && (
+                {c && need && (
                   <input
                     className="dk-input"
                     autoFocus
@@ -216,30 +238,37 @@ export function DialogProvider({
                   />
                 )}
 
-                <div className="dk-actions">
-                  <button className="dk-btn cancel" autoFocus={!need && !!o.danger} onClick={() => close(false)}>
-                    {o.cancelText ?? "Cancel"}
-                  </button>
-                  <button
-                    className="dk-btn go"
-                    autoFocus={!need && !o.danger}
-                    disabled={!ready}
-                    onClick={() => close(true)}
-                  >
-                    {o.confirmText ?? "Yes, continue"}
-                  </button>
-                </div>
+                {c ? (
+                  <div className="dk-actions two">
+                    <button className="dk-btn cancel" autoFocus={!need && !!c.danger} onClick={() => close(false)}>
+                      {c.cancelText ?? "Cancel"}
+                    </button>
+                    <button className="dk-btn go" autoFocus={!need && !c.danger} disabled={!ready} onClick={() => close(true)}>
+                      {c.confirmText ?? "Yes, continue"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="dk-actions">
+                    <button className="dk-btn go" autoFocus onClick={() => close(true)}>
+                      {n?.buttonText ?? "Done"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {toast && (
-          <div key={toast.id} className={`dk-toast ${toast.kind}`} role="status" aria-live="polite">
-            <span>{toast.text}</span>
-            <button aria-label="Close message" onClick={() => { clearTimeout(timer.current); setToast(null); }}>×</button>
-          </div>
-        )}
+          {toast && (
+            <div key={toast.id} className={`dk-toast ${toast.kind}`} role={toast.kind === "err" ? "alert" : "status"} aria-live={toast.kind === "err" ? "assertive" : "polite"}>
+              <span className="dk-ticon"><Icon kind={toast.kind} size={18} /></span>
+              <div className="dk-ttext">
+                <strong>{toast.title}</strong>
+                <span>{toast.text}</span>
+              </div>
+              <button aria-label="Close message" onClick={() => { clearTimeout(timer.current); setToast(null); }}>×</button>
+            </div>
+          )}
+        </NoticeCtx.Provider>
       </ToastCtx.Provider>
     </AskCtx.Provider>
   );

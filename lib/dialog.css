@@ -1,0 +1,41 @@
+/* DKPS shared dialogs and toasts. Loaded as a real stylesheet. */
+.dk-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(7,31,61,.48);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);font-family:Poppins,Arial,Helvetica,sans-serif;animation:dk-fade .22s ease-out}
+.dk-card{box-sizing:border-box;width:min(400px,100%);max-height:calc(100dvh - 40px);overflow:auto;background:#fff;border:1px solid rgba(255,255,255,.8);border-radius:26px;padding:30px 24px 24px;text-align:center;box-shadow:0 24px 75px rgba(7,31,61,.28);animation:dk-pop .3s cubic-bezier(.2,.85,.25,1.15)}
+.dk-icon{width:64px;height:64px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center}
+.dk-icon.ok{background:#e6f5ed;color:#1a8f4c}
+.dk-icon.warn{background:#fdf0dc;color:#c98a00}
+.dk-icon.err{background:#fdeaea;color:#c62828}
+.dk-icon.info{background:#e6eefa;color:var(--blue,#1e5c98)}
+.dk-card.danger .dk-icon.warn{background:#fdeaea;color:#c62828}
+.dk-title{margin:0 0 8px;color:var(--navy,#071f3d);font-size:1.2rem;font-weight:700;line-height:1.3;letter-spacing:-.01em}
+.dk-msg{margin:0;color:#687385;font-size:.92rem;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.dk-input{box-sizing:border-box;width:100%;min-height:48px;margin-top:18px;padding:0 15px;border:1px solid #dce3ed;border-radius:12px;background:#f8fafc;color:#071f3d;font:inherit;text-align:left;outline:none;transition:border-color .2s,box-shadow .2s}
+.dk-input:focus{border-color:var(--blue,#1e5c98);box-shadow:0 0 0 4px rgba(30,92,152,.12)}
+.dk-actions{display:grid;grid-template-columns:1fr;gap:12px;margin-top:24px}
+.dk-actions.two{grid-template-columns:1fr 1fr}
+.dk-btn{box-sizing:border-box;width:100%;min-height:50px;padding:0 16px;border-radius:14px;font:inherit;font-size:.95rem;font-weight:700;cursor:pointer;border:1px solid transparent;transition:background .2s,transform .2s,box-shadow .2s}
+.dk-btn:active:not(:disabled){transform:scale(.97)}
+.dk-btn.cancel{background:#edf1f6;color:var(--navy,#071f3d)}
+.dk-btn.cancel:hover{background:#e1e8f0}
+.dk-btn.go{background:var(--navy,#071f3d);color:#fff;box-shadow:0 5px 14px rgba(7,31,61,.16)}
+.dk-btn.go:hover:not(:disabled){background:var(--navy-light,#0c315d)}
+.dk-card.danger .dk-btn.go{background:var(--red,#9e1824)}
+.dk-card.danger .dk-btn.go:hover:not(:disabled){background:#7d121c}
+.dk-btn:disabled{opacity:.45;cursor:not-allowed}
+.dk-btn:focus-visible,.dk-toast button:focus-visible{outline:3px solid var(--gold,#d4ad58);outline-offset:3px}
+
+/* Toast: navy bar with a round icon, a title, one line of text and a close button */
+.dk-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1100;display:flex;align-items:center;gap:13px;box-sizing:border-box;width:max-content;max-width:min(460px,calc(100vw - 32px));padding:13px 14px;background:var(--navy,#071f3d);color:#fff;border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 14px 45px rgba(7,31,61,.32);font-family:Poppins,Arial,Helvetica,sans-serif;animation:dk-up .3s cubic-bezier(.2,.85,.25,1.1)}
+.dk-ticon{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(212,173,88,.2);color:var(--gold,#d4ad58)}
+.dk-toast.ok .dk-ticon{background:rgba(69,197,139,.2);color:#45c58b}
+.dk-toast.err .dk-ticon{background:rgba(241,116,124,.2);color:#f1747c}
+.dk-ttext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.dk-ttext strong{font-size:.9rem;font-weight:700;line-height:1.3}
+.dk-ttext span{font-size:.8rem;line-height:1.45;font-weight:400;color:#c7d4e4;white-space:pre-wrap;overflow-wrap:anywhere}
+.dk-toast button{flex:none;border:0;background:transparent;color:#c7d4e4;font-size:1.3rem;line-height:1;cursor:pointer;padding:2px 6px}
+.dk-toast button:hover{color:#fff}
+@keyframes dk-fade{from{opacity:0}to{opacity:1}}
+@keyframes dk-pop{from{opacity:0;transform:translateY(12px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes dk-up{from{opacity:0;transform:translate(-50%,16px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@media(max-width:520px){.dk-overlay{padding:16px}.dk-card{border-radius:24px;padding:26px 20px 20px}.dk-toast{bottom:18px}}
+@media(prefers-reduced-motion:reduce){.dk-overlay,.dk-card,.dk-toast{animation:none}.dk-btn,.dk-input{transition:none}}
