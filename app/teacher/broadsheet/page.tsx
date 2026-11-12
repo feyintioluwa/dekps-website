@@ -147,6 +147,19 @@ function calculateScore(entry: Entry): { total: number | null; complete: boolean
   };
 }
 
+// Shared live alert for desktop, mobile list, and mobile quick entry.
+function scoreAlert(entry: Entry): string {
+  const invalidCA = entry.ca !== "" && (!/^\d{1,2}$/.test(entry.ca) || Number(entry.ca) > 40);
+  const invalidExam = entry.exam !== "" && (!/^\d{1,2}$/.test(entry.exam) || Number(entry.exam) > 60);
+  if (invalidCA && invalidExam) return "Invalid CA & Exam";
+  if (invalidCA) return "Invalid CA";
+  if (invalidExam) return "Invalid Exam";
+  if (entry.ca === "" && entry.exam === "") return "Missing Both";
+  if (entry.ca === "") return "Missing CA";
+  if (entry.exam === "") return "Missing Exam";
+  return "Complete";
+}
+
 function buildEntries(
 
   data: ClassData,
@@ -605,11 +618,7 @@ function BroadsheetInner() {
 
       if (
 
-        missingOnly &&
-
-        entry.ca !== "" &&
-
-        entry.exam !== ""
+        missingOnly && calculateScore(entry).complete
 
       ) {
 
@@ -1901,15 +1910,7 @@ function BroadsheetInner() {
 
                             >
 
-                              {invalid
-
-                                ? "Invalid"
-
-                                : isComplete
-
-                                  ? "Complete"
-
-                                  : "Incomplete"}
+                              {scoreAlert(entry)}
 
                             </span>
 
@@ -1960,6 +1961,10 @@ function BroadsheetInner() {
                         <p>{quickStudent.login_id}</p>
 
                       </div>
+
+                      <span className={`bs-status ${calculateScore(values[quickStudent.id] ?? EMPTY).complete ? "bs-complete" : "bs-incomplete"}`}>
+                        {scoreAlert(values[quickStudent.id] ?? EMPTY)}
+                      </span>
 
                     </div>
 
@@ -2080,15 +2085,7 @@ function BroadsheetInner() {
 
                         >
 
-                          {invalid
-
-                            ? "Invalid"
-
-                            : isComplete
-
-                              ? "Complete"
-
-                              : "Incomplete"}
+                          {scoreAlert(entry)}
 
                         </span>
 
