@@ -1,0 +1,22 @@
+"use client";
+import {useEffect,useState,type FormEvent} from "react";
+import "../teacher.css";
+type Opt={id:string;name:string};
+type Item={id:string;created_at:string;status:string;kind:string;old_score:number;proposed_score:number;reason:string;decision_note:string|null};
+export default function PublishedCorrections(){
+ const [classes,setClasses]=useState<Opt[]>([]),[students,setStudents]=useState<Opt[]>([]),[subjects,setSubjects]=useState<Opt[]>([]);
+ const [term,setTerm]=useState(""),[cls,setCls]=useState(""),[student,setStudent]=useState(""),[subject,setSubject]=useState(""),[kind,setKind]=useState("test1"),[mark,setMark]=useState(""),[reason,setReason]=useState(""),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false),[items,setItems]=useState<Item[]>([]);
+ async function refresh(){const r=await fetch("/api/teacher/published-corrections",{cache:"no-store"});const d=await r.json();if(r.ok)setItems(d.items??[]);}
+ useEffect(()=>{fetch("/api/teacher/scores").then(r=>r.json()).then(d=>{setTerm(d.term?.id??"");setClasses(d.classes??[]);}).catch(()=>setMsg("Could not load classes"));void refresh();},[]);
+ useEffect(()=>{if(!cls){setStudents([]);setSubjects([]);return;}fetch(`/api/teacher/scores?classId=${encodeURIComponent(cls)}`).then(r=>r.json()).then(d=>{setStudents((d.students??[]).map((x:{id:string;name:string})=>({id:x.id,name:x.name})));setSubjects(d.subjects??[]);setStudent("");setSubject("");}).catch(()=>setMsg("Could not load class"));},[cls]);
+ async function submit(e:FormEvent){e.preventDefault();setBusy(true);setMsg("");try{const r=await fetch("/api/teacher/published-corrections",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({termId:term,classId:cls,studentId:student,subjectId:subject,kind,proposedScore:Number(mark),reason})});const d=await r.json();if(!r.ok)throw Error(d.error??"Request failed");setMsg("Correction sent to School Admin for approval.");setReason("");setMark("");await refresh();}catch(e){setMsg((e as Error).message);}finally{setBusy(false);}}
+ return <main className="tch"><div className="tch-main"><a href="/teacher">← Dashboard</a><h1>Published Result Corrections</h1><p className="tch-muted">Requests require School Admin approval. No mark changes until approved.</p><form onSubmit={submit} className="tch-card" style={{maxWidth:640,marginTop:20}}><h2>Request a correction</h2>
+ <label>Class<select required value={cls} onChange={e=>setCls(e.target.value)}><option value="">Select class</option>{classes.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+ <label>Student<select required value={student} onChange={e=>setStudent(e.target.value)}><option value="">Select student</option>{students.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+ <label>Subject<select required value={subject} onChange={e=>setSubject(e.target.value)}><option value="">Select subject</option>{subjects.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+ <label>Score type<select value={kind} onChange={e=>setKind(e.target.value)}><option value="test1">CA / 40</option><option value="exam">Exam / 60</option></select></label>
+ <label>Corrected mark<input required type="number" min="0" max={kind==="test1"?40:60} step="1" value={mark} onChange={e=>setMark(e.target.value)}/></label>
+ <label>Reason<textarea required minLength={10} maxLength={1000} rows={3} value={reason} onChange={e=>setReason(e.target.value)} style={{width:"100%",padding:12}}/></label>
+ <button className="tch-btn" disabled={busy||!term}>{busy?"Submitting…":"Send approval request"}</button><p role="status">{msg}</p></form>
+ <section className="tch-card" style={{marginTop:20}}><h2>My correction requests</h2><div className="tch-table-wrap"><table className="tch-table"><thead><tr><th>Date</th><th>Type</th><th>Change</th><th>Status</th><th>Admin note</th></tr></thead><tbody>{items.map(x=><tr key={x.id}><td>{new Date(x.created_at).toLocaleDateString()}</td><td>{x.kind==="test1"?"CA":"Exam"}</td><td>{x.old_score} → {x.proposed_score}</td><td><strong style={{color:x.status==="approved"?"#138a57":x.status==="rejected"?"#9e1824":"#8a6300"}}>{x.status==="approved"?"Approved":x.status==="rejected"?"Rejected":"Awaiting admin approval"}</strong></td><td>{x.decision_note??"—"}</td></tr>)}</tbody></table></div>{!items.length&&<p className="tch-muted">No requests yet.</p>}</section></div></main>;
+}
