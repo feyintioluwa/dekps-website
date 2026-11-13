@@ -9,6 +9,7 @@ export const RECENT_TOOLS: Record<string, string> = {
   "/teacher/broadsheet": "Teacher Broadsheet",
   "/teacher/scores": "Scores",
   "/teacher/score-history": "Score Editing History",
+  "/teacher/published-corrections": "Published Result Corrections",
 };
 
 const items = [
@@ -116,7 +117,7 @@ export default function TeacherMobileNav() {
   const isActive = (href: string) => href === "/teacher"
     ? pathname === "/teacher"
     : pathname === href || pathname.startsWith(href + "/");
-  const moreActive = ["/teacher/cbt", "/teacher/broadsheet", "/teacher/score-history", "/teacher/classes", "/teacher/profile"].some(
+  const moreActive = ["/teacher/cbt", "/teacher/broadsheet", "/teacher/score-history", "/teacher/published-corrections", "/teacher/classes", "/teacher/profile"].some(
     (href) => pathname === href || pathname.startsWith(href + "/")
   );
 
@@ -128,6 +129,7 @@ export default function TeacherMobileNav() {
           <a href="/teacher/cbt">Tests &amp; Exams</a>
           <a href="/teacher/broadsheet">Broadsheet</a>
           <a href="/teacher/score-history">Score History</a>
+          <a href="/teacher/published-corrections">Result Corrections</a>
           <a href="/teacher/classes">My Classes</a>
           <a href="/teacher/profile">Profile &amp; Settings</a>
         </div>

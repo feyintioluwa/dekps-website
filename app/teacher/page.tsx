@@ -771,6 +771,12 @@ export default function TeacherPage() {
 
                 </a>
 
+                <a className="tch-card tch-assign-card" href="/teacher/published-corrections">
+                  <div className="tch-class-top"><h2>Published Result Corrections</h2></div>
+                  <p className="tch-muted">Request a correction to a published CA or exam score and track admin decisions.</p>
+                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>View correction requests</span>
+                </a>
+
                 <a className="tch-card tch-assign-card" href="/teacher/classes">
                   <div className="tch-class-top"><h2>My Classes</h2><span className="tch-badge">{me.classes.length} assigned</span></div>
                   <p className="tch-muted">View your assigned classes, subjects, and student lists in one place.</p>
