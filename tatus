@@ -1,0 +1,18 @@
+ app/api/teacher/profile-photo/route.ts     |  56 [32m++++[m
+ app/teacher/AcademicTermIndicator.tsx      |  56 [32m++++[m
+ app/teacher/ContinueWorking.tsx            |  37 [32m+++[m
+ app/teacher/QuickActions.tsx               |  28 [32m++[m
+ app/teacher/TeacherAvatar.tsx              |  24 [32m++[m
+ app/teacher/TeacherMobileNav.tsx           | 153 [32m+++++++++[m
+ app/teacher/layout.tsx                     |  12 [32m+[m
+ app/teacher/page.tsx                       | 482 [32m++++++++++++++++++++++++++++[m[31m-[m
+ app/teacher/profile/page.tsx               | 128 [32m++++++++[m
+ app/teacher/teacher-academic-term.css      |  32 [32m++[m
+ app/teacher/teacher-continue.css           |   8 [32m+[m
+ app/teacher/teacher-dashboard-overview.css |  27 [32m++[m
+ app/teacher/teacher-mobile-nav.css         |  41 [32m+++[m
+ app/teacher/teacher-profile-avatar.css     |  21 [32m++[m
+ app/teacher/teacher-profile.css            |  57 [32m++++[m
+ app/teacher/teacher-quick-actions.css      |  13 [32m+[m
+ supabase/teacher-profile-photos.sql        |  11 [32m+[m
+ 17 files changed, 1185 insertions(+), 1 deletion(-)

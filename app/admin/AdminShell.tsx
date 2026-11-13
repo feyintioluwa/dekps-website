@@ -15,6 +15,7 @@ const NAV = [
   ["/admin/electives", "🧪", "SSS Subjects"],
   ["/admin/subjects", "📚", "Class Subjects"],
   ["/admin/broadsheet", "📑", "Scores & Results"],
+  ["/admin/published-corrections", "🔔", "Correction Requests"],
   ["/admin/cbt", "📝", "Tests & Exams"],
   ["/admin/test-access", "🔒", "Test Access"],
   ["/admin/assignments", "📋", "Assignments"],
@@ -38,6 +39,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [current, setCurrent] = useState("");
   const [menu, setMenu] = useState(false);
+  const [pendingCorrections, setPendingCorrections] = useState<number | null>(null);
   const path = usePathname();
 
   useEffect(() => {
@@ -59,6 +61,26 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         setCurrent(t ? `${t.term} — ${t.session}` : "No current term set");
       })
       .catch(() => {});
+  }, [key, path]);
+
+  // Poll the existing, admin-authorized Stage 12 endpoint; no extra table or keys.
+  useEffect(() => {
+    if (!key) { setPendingCorrections(null); return; }
+    let active = true;
+    const controller = new AbortController();
+    async function refresh() {
+      try {
+        const r = await fetch("/api/admin/published-corrections", {
+          headers: { "x-admin-key": key! }, cache: "no-store", signal: controller.signal,
+        });
+        if (!r.ok) throw new Error("Could not load correction notifications");
+        const data = await r.json();
+        if (active) setPendingCorrections((Array.isArray(data.items) ? data.items : []).filter((x: { status: string }) => x.status === "pending").length);
+      } catch { if (active) setPendingCorrections(null); }
+    }
+    void refresh();
+    const interval = setInterval(() => void refresh(), 30000);
+    return () => { active = false; clearInterval(interval); controller.abort(); };
   }, [key, path]);
 
   async function login(e: FormEvent) {
@@ -107,7 +129,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <nav className={"shell-nav" + (menu ? " open" : "")}>
               {NAV.map(([href, icon, label]) => (
                 <Link key={href} href={href} className={path === href ? "on" : ""} onClick={() => setMenu(false)}>
-                  <span>{icon}</span>{label}
+                  <span>{icon}</span>{label}{href === "/admin/published-corrections" && pendingCorrections !== null && pendingCorrections > 0 && (
+                    <span aria-label={`${pendingCorrections} pending corrections`} style={{marginLeft:"auto",background:"#d4ad58",color:"#071f3d",borderRadius:999,padding:"1px 8px",fontSize:12,fontWeight:800}}>{pendingCorrections}</span>
+                  )}
                 </Link>
               ))}
             </nav>
