@@ -11,6 +11,12 @@ type Correction = {
   status: string;
   teacher_id: string;
   student_id: string;
+  class_id: string;
+  teacher_name?: string | null;
+  student_name?: string | null;
+  student_login_id?: string | null;
+  subject_name?: string | null;
+  class_name?: string | null;
   subject_id: string;
   kind: string;
   old_score: number;
@@ -164,9 +170,10 @@ export default function AdminCorrections() {
                 </div>
 
                 <div className="dkps-corrections-details">
-                  <div><span>Teacher ID</span><strong>{item.teacher_id}</strong></div>
-                  <div><span>Student ID</span><strong>{item.student_id}</strong></div>
-                  <div><span>Subject ID</span><strong>{item.subject_id}</strong></div>
+                  <div><span>Teacher</span><strong>{item.teacher_name ?? item.teacher_id}</strong></div>
+                  <div><span>Student</span><strong>{item.student_name ?? item.student_id}{item.student_login_id ? ` (${item.student_login_id})` : ""}</strong></div>
+                  <div><span>Subject</span><strong>{item.subject_name ?? item.subject_id}</strong></div>
+                  <div><span>Class</span><strong>{item.class_name ?? item.class_id}</strong></div>
                 </div>
 
                 <div className="dkps-corrections-change">

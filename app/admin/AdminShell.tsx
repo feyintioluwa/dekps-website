@@ -75,7 +75,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         });
         if (!r.ok) throw new Error("Could not load correction notifications");
         const data = await r.json();
-        if (active) setPendingCorrections((data.items ?? []).filter((x: { status: string }) => x.status === "pending").length);
+        if (active) setPendingCorrections((Array.isArray(data.items) ? data.items : []).filter((x: { status: string }) => x.status === "pending").length);
       } catch { if (active) setPendingCorrections(null); }
     }
     void refresh();
