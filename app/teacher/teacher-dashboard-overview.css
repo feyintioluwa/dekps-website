@@ -1,0 +1,27 @@
+/* Step 2: isolated dashboard enhancements; existing teacher styles remain unchanged. */
+.tch-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.tch-overview-item { min-width: 0; padding: 17px 16px; border: 1px solid #dfe4ea; border-top: 3px solid #d4ad58; border-radius: 12px; background: #fff; display: flex; flex-direction: column; gap: 7px; }
+.tch-overview-label { color: #33455f; font-size: .87rem; font-weight: 650; }
+.tch-overview-number { color: #071f3d; font-size: clamp(1.6rem, 3vw, 2.15rem); line-height: 1.2; }
+.tch-overview-pending { color: #687385; font-size: .86rem; font-weight: 600; line-height: 1.4; }
+.tch-overview-detail { color: #687385; font-size: .76rem; }
+.tch-history-row { display: flex; align-items: center; gap: 12px; padding: 13px 4px; margin: 6px 0 16px; border-bottom: 1px solid #dfe4ea; color: #071f3d; text-decoration: none; }
+.tch-history-row:hover, .tch-history-row:focus-visible { background: #f5f8fc; }
+.tch-history-icon { width: 34px; height: 34px; display: grid; place-items: center; flex: none; border-radius: 9px; background: #f6eedb; color: #80601f; font-size: 1.35rem; }
+.tch-history-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.tch-history-copy strong { font-size: .94rem; }
+.tch-history-copy small { color: #687385; font-size: .8rem; }
+.tch-history-arrow { color: #687385; font-size: 1.65rem; }
+.tch-tools-heading { margin: 20px 0 14px; padding-top: 4px; }
+.tch-tools-heading h2 { margin: 0 0 4px; color: #071f3d; }
+.tch-tools-heading p { margin: 0; }
+#notifications { scroll-margin-top: 16px; }
+@media (max-width: 900px) { .tch-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 390px) { .tch-overview { gap: 8px; } .tch-overview-item { padding: 12px 10px; } }
+
+/* Final responsive dashboard polish — consistent spacing and original DKPS tokens. */
+.tch-overview{gap:16px;margin-block:22px 24px}
+.tch-overview-item{border-top-width:4px;border-radius:14px;box-shadow:0 8px 24px rgba(7,31,61,.055);padding:20px 18px}
+.tch-tools-heading{margin-top:28px}
+.tch-history-row{border-radius:10px;padding:14px 12px}
+@media(max-width:560px){.tch-overview{gap:10px;margin-block:16px 20px}.tch-overview-item{padding:14px 12px}.tch-tools-heading{margin-top:22px}}

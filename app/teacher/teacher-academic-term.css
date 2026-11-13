@@ -1,0 +1,32 @@
+.tch-academic-term {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  margin: 14px 0;
+  border: 1px solid #e4e8ef;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(7, 31, 61, .04);
+}
+.tch-academic-term-icon {
+  flex: 0 0 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #fff5df;
+  color: #9c742c;
+  font-size: 24px;
+}
+.tch-academic-term-info { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+.tch-academic-term-eyebrow { color: #84692e; font-size: .7rem; font-weight: 750; letter-spacing: .065em; }
+.tch-academic-term-title { color: #071f3d; font-size: 1.08rem; overflow-wrap: anywhere; }
+.tch-academic-term-detail { color: #66758a; font-size: .8rem; }
+.tch-academic-term-status { flex-shrink: 0; padding: 6px 10px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+.tch-academic-term-status.open { background: #e9f7ef; color: #16643a; }
+.tch-academic-term-status.locked { background: #fff0ed; color: #a13527; }
+@media (max-width: 600px) {
+  .tch-academic-term { flex-wrap: wrap; gap: 10px; padding: 13px; }
+  .tch-academic-term-status { margin-left: 52px; }
+}
