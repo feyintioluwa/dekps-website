@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import "../teacher.css";
 import "../teacher-profile.css";
+import "../teacher-profile-avatar.css";
 import TeacherAvatar from "../TeacherAvatar";
 
 type ClassInfo = { id: string; name: string; isClassTeacher: boolean; studentCount: number; subjects: { id: string; name: string }[] };
