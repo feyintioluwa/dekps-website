@@ -36,6 +36,8 @@ type ClassCard = {
 
 type Me = { teacher: { name: string; email: string }; classes: ClassCard[] };
 
+type DashboardStats = { pendingTasks: number | null; missingScores: number | null; drafts?: number; unmarked?: number; noActiveTerm?: boolean };
+
 type Student = { id: string; login_id: string; name: string };
 
 type Note = { id: string; assignmentId: string; student: string; className: string; subject: string; title: string; submittedAt: string; read: boolean };
@@ -75,6 +77,8 @@ export default function TeacherPage() {
   const [q, setQ] = useState("");
 
   const [notes, setNotes] = useState<Note[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [statsError, setStatsError] = useState(false);
 
 
 
@@ -141,6 +145,21 @@ export default function TeacherPage() {
   }
 
   useEffect(() => { if (me) loadNotes(); }, [me]);
+
+  useEffect(() => {
+    if (!me) { setDashboardStats(null); setStatsError(false); return; }
+    const controller = new AbortController();
+    setDashboardStats(null);
+    setStatsError(false);
+    fetch("/api/teacher/dashboard-stats", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Stats request failed");
+        return res.json() as Promise<DashboardStats>;
+      })
+      .then((data) => { if (!controller.signal.aborted) setDashboardStats(data); })
+      .catch(() => { if (!controller.signal.aborted) setStatsError(true); });
+    return () => controller.abort();
+  }, [me]);
 
 
 
@@ -521,13 +540,17 @@ export default function TeacherPage() {
               </div>
               <div className="tch-overview-item">
                 <span className="tch-overview-label">Pending Tasks</span>
-                <strong className="tch-overview-pending">Not connected</strong>
-                <span className="tch-overview-detail">Awaiting task data</span>
+                <strong className={dashboardStats?.pendingTasks != null ? "tch-overview-number" : "tch-overview-pending"}>
+                  {statsError ? "Unavailable" : dashboardStats?.noActiveTerm ? "—" : dashboardStats?.pendingTasks ?? "Loading…"}
+                </strong>
+                <span className="tch-overview-detail">{statsError ? "Could not load task data" : dashboardStats?.noActiveTerm ? "No active term" : dashboardStats ? `${dashboardStats.drafts ?? 0} drafts · ${dashboardStats.unmarked ?? 0} unmarked submissions` : "Checking assignments and tests"}</span>
               </div>
               <div className="tch-overview-item">
                 <span className="tch-overview-label">Missing Scores</span>
-                <strong className="tch-overview-pending">Not connected</strong>
-                <span className="tch-overview-detail">Awaiting score data</span>
+                <strong className={dashboardStats?.missingScores != null ? "tch-overview-number" : "tch-overview-pending"}>
+                  {statsError ? "Unavailable" : dashboardStats?.noActiveTerm ? "—" : dashboardStats?.missingScores ?? "Loading…"}
+                </strong>
+                <span className="tch-overview-detail">{statsError ? "Could not load score data" : dashboardStats?.noActiveTerm ? "No active term" : "Outstanding CA and exam marks"}</span>
               </div>
             </div>
 
