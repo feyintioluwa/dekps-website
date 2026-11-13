@@ -771,47 +771,11 @@ export default function TeacherPage() {
 
                 </a>
 
-                                {me.classes.map((c) => (
-
-                  <article className="tch-card" key={c.id}>
-
-                    <div className="tch-class-top">
-
-                      <h2>{c.name}</h2>
-
-                      {c.isClassTeacher && <span className="tch-badge">Class teacher</span>}
-
-                    </div>
-
-                    <p className="tch-muted">
-
-                      {c.studentCount} student{c.studentCount === 1 ? "" : "s"}
-
-                    </p>
-
-
-
-                    <div className="tch-chips">
-
-                      {c.subjects.length === 0 ? (
-
-                        <span className="tch-muted">No subjects</span>
-
-                      ) : (
-
-                        c.subjects.map((s) => <span className="tch-chip" key={s.id}>{s.name}</span>)
-
-                      )}
-
-                    </div>
-
-
-
-                    <button className="tch-btn" onClick={() => openStudents(c)}>View students</button>
-
-                  </article>
-
-                ))}
+                <a className="tch-card tch-assign-card" href="/teacher/classes">
+                  <div className="tch-class-top"><h2>My Classes</h2><span className="tch-badge">{me.classes.length} assigned</span></div>
+                  <p className="tch-muted">View your assigned classes, subjects, and student lists in one place.</p>
+                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>View my classes</span>
+                </a>
 
               </div>
 

@@ -116,7 +116,7 @@ export default function TeacherMobileNav() {
   const isActive = (href: string) => href === "/teacher"
     ? pathname === "/teacher"
     : pathname === href || pathname.startsWith(href + "/");
-  const moreActive = ["/teacher/cbt", "/teacher/broadsheet", "/teacher/score-history", "/teacher/profile"].some(
+  const moreActive = ["/teacher/cbt", "/teacher/broadsheet", "/teacher/score-history", "/teacher/classes", "/teacher/profile"].some(
     (href) => pathname === href || pathname.startsWith(href + "/")
   );
 
@@ -128,6 +128,7 @@ export default function TeacherMobileNav() {
           <a href="/teacher/cbt">Tests &amp; Exams</a>
           <a href="/teacher/broadsheet">Broadsheet</a>
           <a href="/teacher/score-history">Score History</a>
+          <a href="/teacher/classes">My Classes</a>
           <a href="/teacher/profile">Profile &amp; Settings</a>
         </div>
       )}
