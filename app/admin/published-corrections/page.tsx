@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminKey } from "../AdminShell";
 import "./corrections.css";
+import { useInputDialog, useToast } from "@/lib/dialog";
 
 type Correction = {
   id: string;
@@ -22,6 +23,8 @@ type Filter = "all" | "pending" | "approved" | "rejected";
 
 export default function AdminCorrections() {
   const key = useAdminKey();
+  const inputDialog = useInputDialog();
+  const toast = useToast();
   const [items, setItems] = useState<Correction[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [msg, setMsg] = useState("");
@@ -42,11 +45,13 @@ export default function AdminCorrections() {
       if (!response.ok) throw new Error(body?.error || `Could not load requests (${response.status})`);
       setItems(Array.isArray(body?.items) ? body.items : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load requests");
+      const message = e instanceof Error ? e.message : "Could not load requests";
+      setError(message);
+      toast(message === "Failed to fetch" ? "Could not connect to the server. Check your connection and try again." : message, "err");
     } finally {
       setLoading(false);
     }
-  }, [key]);
+  }, [key, toast]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -62,9 +67,14 @@ export default function AdminCorrections() {
   );
 
   async function decide(id: string, approve: boolean) {
-    const note = window.prompt(
-      approve ? "Approval note (optional)" : "Reason for rejection (recommended)"
-    );
+    const note = await inputDialog({
+      title: approve ? "Approve score correction" : "Reject score correction",
+      message: approve ? "Confirm approval of this published score change. Add an optional decision note." : "Explain why this correction is being rejected.",
+      placeholder: approve ? "Decision note (optional)" : "Reason for rejection",
+      required: !approve,
+      danger: !approve,
+      confirmText: approve ? "Approve correction" : "Reject correction",
+    });
     if (note === null) return;
     setBusy(id);
     setMsg("");
@@ -77,10 +87,14 @@ export default function AdminCorrections() {
       });
       const body = await response.json().catch(() => null);
       if (!response.ok) throw new Error(body?.error || `Decision failed (${response.status})`);
-      setMsg(approve ? "Correction approved; published result updated." : "Correction rejected.");
+      const success = approve ? "Correction approved; published result updated." : "Correction rejected.";
+      setMsg(success);
+      toast(success, "ok");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Decision failed");
+      const message = e instanceof Error ? e.message : "Decision failed";
+      setError(message);
+      toast(message, "err");
     } finally {
       setBusy("");
     }

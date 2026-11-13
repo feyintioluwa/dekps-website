@@ -39,10 +39,13 @@ export type NoticeOpts = {
 type Ask = (o: ConfirmOpts) => Promise<boolean>;
 type Show = (message: string, kind?: ToastKind, title?: string) => void;
 type Notice = (o: NoticeOpts) => Promise<void>;
+export type InputOpts = { title?: string; message: string; placeholder?: string; initialValue?: string; confirmText?: string; cancelText?: string; required?: boolean; danger?: boolean };
+type InputAsk = (o: InputOpts) => Promise<string | null>;
 
 const AskCtx = createContext<Ask>(async () => false);
 const ToastCtx = createContext<Show>(() => {});
 const NoticeCtx = createContext<Notice>(async () => {});
+const InputCtx = createContext<InputAsk>(async () => null);
 
 /** const ask = useConfirm();  if (!(await ask({ message: "Sure?" }))) return; */
 export const useConfirm = () => useContext(AskCtx);
@@ -52,6 +55,8 @@ export const useToast = () => useContext(ToastCtx);
 
 /** const notice = useNotice();  await notice({ title: "Scores saved!", message: "..." }); */
 export const useNotice = () => useContext(NoticeCtx);
+/** Ask for text using the DKPS modal instead of window.prompt(). */
+export const useInputDialog = () => useContext(InputCtx);
 
 /* ------------------------------- helpers ------------------------------- */
 
@@ -80,7 +85,7 @@ function Icon({ kind, size = 28 }: { kind: IconKind; size?: number }) {
   return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 7.8h.01" /></svg>;
 }
 
-type Dlg = { type: "confirm"; o: ConfirmOpts } | { type: "notice"; o: NoticeOpts };
+type Dlg = { type: "confirm"; o: ConfirmOpts } | { type: "notice"; o: NoticeOpts } | { type: "input"; o: InputOpts };
 
 /* ------------------------------- provider ------------------------------- */
 
@@ -98,23 +103,23 @@ export function DialogProvider({
   const [dlg, setDlg] = useState<Dlg | null>(null);
   const [typed, setTyped] = useState("");
   const [toast, setToast] = useState<{ id: number; text: string; kind: ToastKind; title: string } | null>(null);
-  const resolver = useRef<((v: boolean) => void) | null>(null);
+  const resolver = useRef<((v: boolean | string | null) => void) | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const counter = useRef(0);
   const last = useRef<{ text: string; at: number }>({ text: "", at: 0 });
 
-  const open = useCallback((d: Dlg, res: (v: boolean) => void) => {
-    resolver.current?.(false); // a newer question replaces an unanswered one
+  const open = useCallback((d: Dlg, res: (v: boolean | string | null) => void) => {
+    resolver.current?.(null); // a newer question replaces an unanswered one
     resolver.current = res;
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setTyped("");
+    setTyped(d.type === "input" ? (d.o.initialValue ?? "") : "");
     setDlg(d);
   }, []);
 
   const ask = useCallback<Ask>(
-    (opts) => new Promise<boolean>((res) => open({ type: "confirm", o: opts }, res)),
+    (opts) => new Promise<boolean>((res) => open({ type: "confirm", o: opts }, (v) => res(v === true))),
     [open]
   );
 
@@ -123,7 +128,12 @@ export function DialogProvider({
     [open]
   );
 
-  const close = useCallback((v: boolean) => {
+  const askInput = useCallback<InputAsk>(
+    (opts) => new Promise<string | null>((res) => open({ type: "input", o: opts }, (v) => res(typeof v === "string" ? v : null))),
+    [open]
+  );
+
+  const close = useCallback((v: boolean | string | null) => {
     resolver.current?.(v);
     resolver.current = null;
     setDlg(null);
@@ -153,7 +163,7 @@ export function DialogProvider({
   useEffect(() => {
     if (!dlg) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close(dlg.type === "notice");
+      if (e.key === "Escape") close(dlg.type === "input" ? null : dlg.type === "notice");
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -196,25 +206,27 @@ export function DialogProvider({
   const isConfirm = dlg?.type === "confirm";
   const c = dlg?.type === "confirm" ? dlg.o : null;
   const n = dlg?.type === "notice" ? dlg.o : null;
+  const inp = dlg?.type === "input" ? dlg.o : null;
   const need = c?.typeToConfirm;
   const ready = !need || typed.trim().toUpperCase() === need.trim().toUpperCase();
-  const iconKind: IconKind = c ? "warn" : (n?.kind ?? "ok");
+  const iconKind: IconKind = c || inp ? "warn" : (n?.kind ?? "ok");
   const title = c
     ? (c.title ?? (c.danger ? "Please confirm" : "Confirm"))
-    : (n?.title ?? NOTICE_TITLE[n?.kind ?? "ok"]);
-  const message = c?.message ?? n?.message ?? "";
+    : (inp?.title ?? n?.title ?? NOTICE_TITLE[n?.kind ?? "ok"]);
+  const message = c?.message ?? inp?.message ?? n?.message ?? "";
 
   return (
     <AskCtx.Provider value={ask}>
       <ToastCtx.Provider value={show}>
         <NoticeCtx.Provider value={notice}>
+          <InputCtx.Provider value={askInput}>
           {children}
 
           {dlg && (
-            <div className="dk-overlay" onClick={() => close(!isConfirm)}>
+            <div className="dk-overlay" onClick={() => close(inp ? null : !isConfirm)}>
               <div
                 ref={cardRef}
-                className={"dk-card" + (c?.danger ? " danger" : "")}
+                className={"dk-card" + (c?.danger || inp?.danger ? " danger" : "")}
                 role={c?.danger || n?.kind === "err" ? "alertdialog" : "dialog"}
                 aria-modal="true"
                 aria-labelledby="dk-title"
@@ -238,7 +250,19 @@ export function DialogProvider({
                   />
                 )}
 
-                {c ? (
+                {inp && (
+                  <input className="dk-input" autoFocus value={typed}
+                    onChange={(e) => setTyped(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && (!inp.required || typed.trim())) close(typed.trim()); }}
+                    placeholder={inp.placeholder ?? "Enter a note"} aria-label={inp.placeholder ?? "Note"} />
+                )}
+
+                {inp ? (
+                  <div className="dk-actions two">
+                    <button className="dk-btn cancel" onClick={() => close(null)}>{inp.cancelText ?? "Cancel"}</button>
+                    <button className="dk-btn go" disabled={!!inp.required && !typed.trim()} onClick={() => close(typed.trim())}>{inp.confirmText ?? "Continue"}</button>
+                  </div>
+                ) : c ? (
                   <div className="dk-actions two">
                     <button className="dk-btn cancel" autoFocus={!need && !!c.danger} onClick={() => close(false)}>
                       {c.cancelText ?? "Cancel"}
@@ -268,6 +292,7 @@ export function DialogProvider({
               <button aria-label="Close message" onClick={() => { clearTimeout(timer.current); setToast(null); }}>×</button>
             </div>
           )}
+          </InputCtx.Provider>
         </NoticeCtx.Provider>
       </ToastCtx.Provider>
     </AskCtx.Provider>
