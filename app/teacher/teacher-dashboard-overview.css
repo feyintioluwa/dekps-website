@@ -25,3 +25,13 @@
 .tch-tools-heading{margin-top:28px}
 .tch-history-row{border-radius:10px;padding:14px 12px}
 @media(max-width:560px){.tch-overview{gap:10px;margin-block:16px 20px}.tch-overview-item{padding:14px 12px}.tch-tools-heading{margin-top:22px}}
+
+/* Compact mobile dashboard — desktop remains unchanged. */
+@media (max-width: 600px) {
+  .tch-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0 14px; }
+  .tch-overview-item { padding: 10px 11px; gap: 4px; border-top-width: 3px; border-radius: 10px; box-shadow: 0 2px 9px rgba(7,31,61,.035); }
+  .tch-overview-label { font-size: .74rem; line-height: 1.2; }
+  .tch-overview-number { font-size: 1.4rem; line-height: 1.1; }
+  .tch-overview-pending { font-size: .72rem; }
+  .tch-overview-detail { font-size: .64rem; line-height: 1.25; }
+}

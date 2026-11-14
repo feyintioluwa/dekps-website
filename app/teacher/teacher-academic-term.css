@@ -30,3 +30,14 @@
   .tch-academic-term { flex-wrap: wrap; gap: 10px; padding: 13px; }
   .tch-academic-term-status { margin-left: 52px; }
 }
+
+/* Compact mobile dashboard — desktop remains unchanged. */
+@media (max-width: 600px) {
+  .tch-academic-term { flex-wrap: nowrap; gap: 9px; padding: 10px 11px; margin: 9px 0 12px; border-radius: 11px; }
+  .tch-academic-term-icon { flex-basis: 32px; height: 32px; font-size: 18px; border-radius: 8px; }
+  .tch-academic-term-info { gap: 1px; }
+  .tch-academic-term-eyebrow { font-size: .57rem; letter-spacing: .025em; }
+  .tch-academic-term-title { font-size: .86rem; line-height: 1.25; }
+  .tch-academic-term-detail { font-size: .67rem; line-height: 1.25; }
+  .tch-academic-term-status { margin-left: 0; padding: 4px 7px; font-size: .62rem; white-space: nowrap; }
+}
