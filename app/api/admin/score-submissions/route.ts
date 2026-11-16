@@ -7,7 +7,7 @@ type Mark = { student_id: string; kind: string; score: number };
 
 export async function GET(req: Request) {
   const c = adminClient(req);
-  if ("error" in c) return bad(c.error, c.status);
+  if ("error" in c) return bad(c.error ?? "Admin access denied.", c.status ?? 403);
   const id = new URL(req.url).searchParams.get("id");
   if (id) {
     const { data: submission, error: submissionError } = await c.sb.from("score_submissions")
@@ -94,7 +94,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const c = adminClient(req);
-  if ("error" in c) return bad(c.error, c.status);
+  if ("error" in c) return bad(c.error ?? "Admin access denied.", c.status ?? 403);
   const b = await req.json().catch(() => null);
   if (!b || typeof b.id !== "string" || !["approve", "return"].includes(b.action) || typeof b.note !== "string")
     return bad("Invalid decision");
