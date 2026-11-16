@@ -1,11 +1,10 @@
 "use client";
-
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState, useMemo } from "react";
+import { saveTeacherDraft, readTeacherDraft, clearTeacherDraft, type DraftScope } from "@/lib/teacher-offline-drafts";
 import * as XLSX from "xlsx";
 import "../../admin/students/admin.css";
 import "../teacher.css";
 import { DialogProvider } from "@/lib/dialog";
-
 type Opt = { id: string; name: string };
 type Stu = { id: string; login_id: string; name: string };
 type TermInfo = { id: string; label: string; locked: boolean } | null;
@@ -15,14 +14,11 @@ type Data = {
   studentSubjects: { student_id: string; subject_id: string }[];
   scores: { student_id: string; subject_id: string; kind: string; score: number }[];
 };
-type Row = { loginId: string; scores: { subjectId: string; kind: string; score: number }[] };
+type Row = { loginId: string; scores: { subjectId: string; kind: string; score: number; expected?: number | null }[] };
 type Group = { classId: string; className: string; rows: Row[] };
-
 const API = "/api/teacher/scores";
-
 // Compare names/subjects ignoring capitals and extra spaces
 const norm = (v: unknown) => String(v ?? "").toUpperCase().replace(/\s+/g, " ").trim();
-
 export default function TeacherScoresPage() {
   return (
     <DialogProvider watchMessages>
@@ -30,7 +26,6 @@ export default function TeacherScoresPage() {
     </DialogProvider>
   );
 }
-
 function TeacherScores() {
   const [signedOut, setSignedOut] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -40,6 +35,37 @@ function TeacherScores() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Group[]>([]);
+  const [teacherId, setTeacherId] = useState("");
+  const [restore, setRestore] = useState<{ groups: Group[]; savedAt: number } | null>(null);
+  const [storageWarning, setStorageWarning] = useState("");
+  const [online, setOnline] = useState(true);
+  const [uncertain, setUncertain] = useState(false);
+  const draftScope = useMemo<DraftScope | null>(() =>
+    teacherId && term?.id ? { teacherId, termId: term.id, mode: "excel" } : null,
+    [teacherId, term?.id]
+  );
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update(); window.addEventListener("online", update); window.addEventListener("offline", update);
+    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
+  }, []);
+  useEffect(() => {
+    if (!draftScope) return;
+    const draft = readTeacherDraft<{ groups: Group[] }>(draftScope);
+    if (!draft) return;
+    const groups = draft.payload?.groups;
+    if (!Array.isArray(groups) || !groups.every(g => typeof g.classId === "string" && Array.isArray(g.rows) &&
+      g.rows.every(r => typeof r.loginId === "string" && Array.isArray(r.scores) && r.scores.every(s =>
+        typeof s.subjectId === "string" && (s.kind === "ca" || s.kind === "exam") &&
+        Number.isInteger(s.score) && Number.isInteger(s.expected ?? 0))))) {
+      setStorageWarning("An invalid saved Excel draft was found. Please discard it."); return;
+    }
+    if (groups.length) setRestore({ groups, savedAt: draft.savedAt });
+  }, [draftScope]);
+  function persist(groups: Group[]) {
+    if (draftScope && !saveTeacherDraft(draftScope, { groups }))
+      setStorageWarning("Could not back up uploaded scores in this browser. Keep your Excel file safe.");
+  }
 
   useEffect(() => {
     (async () => {
@@ -49,6 +75,11 @@ function TeacherScores() {
         if (r.status === 401) { setSignedOut(true); return; }
         if (!r.ok) { setMsg(d.error || "Something went wrong."); return; }
         setTerm(d.term); setClasses(d.classes);
+        const me = await fetch("/api/teacher/me", { cache: "no-store" });
+        const identity = await me.json().catch(() => ({}));
+        if (!me.ok || typeof identity.teacher?.id !== "string") {
+          setStorageWarning("Teacher identity unavailable. Local recovery is disabled.");
+        } else setTeacherId(identity.teacher.id);
       } catch {
         setMsg("Could not reach the server. Check your internet and try again.");
       } finally {
@@ -56,10 +87,8 @@ function TeacherScores() {
       }
     })();
   }, []);
-
   const targets = () => (classId === "all" ? classes : classes.filter((c) => c.id === classId));
   const ready = !!term && !term.locked;
-
   async function fetchClass(cid: string): Promise<Data | null> {
     const r = await fetch(`${API}?classId=${encodeURIComponent(cid)}`);
     const d = await r.json().catch(() => ({}));
@@ -71,7 +100,6 @@ function TeacherScores() {
     const mine = d.studentSubjects.filter((x) => x.student_id === st.id);
     return mine.length === 0 || mine.some((x) => x.subject_id === subId);
   };
-
   // ---------- Template: CA (out of 40) and Exam (out of 60) for YOUR subjects ----------
   async function template() {
     setBusy(true); setMsg("Preparing template…");
@@ -81,14 +109,12 @@ function TeacherScores() {
       const d = await fetchClass(c.id);
       if (!d) { setBusy(false); return; }
       if (!d.students.length || !d.subjects.length) continue;
-
       // Row 1: Subject + each subject name (merged over 2 columns)
       // Row 2: Name/Score + 40 and 60 under every subject
       const top: (string | number)[] = ["Subject"];
       const max: (string | number)[] = ["Name/Score"];
       d.subjects.forEach((s) => { top.push(s.name, ""); max.push(40, 60); });
       const aoa: (string | number)[][] = [top, max];
-
       d.students.forEach((st) => {
         const line: (string | number)[] = [st.name];
         d.subjects.forEach((s) => {
@@ -98,12 +124,10 @@ function TeacherScores() {
         });
         aoa.push(line);
       });
-
       const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: d.subjects.length * 2 } });
       ws["!merges"] = d.subjects.map((_, j) => ({ s: { r: 0, c: 1 + j * 2 }, e: { r: 0, c: 2 + j * 2 } }));
       ws["!cols"] = [{ wch: 30 }, ...d.subjects.flatMap(() => [{ wch: 7 }, { wch: 7 }])];
-
       XLSX.utils.book_append_sheet(wb, ws, c.name.slice(0, 31));
       sheets++;
     }
@@ -113,7 +137,6 @@ function TeacherScores() {
     XLSX.writeFile(wb, `${label}-scores.xlsx`);
     setMsg(`Template downloaded (${sheets} sheet${sheets > 1 ? "s" : ""}). Fill CA (out of 40) and Exam (out of 60). Leave a box empty for no score. Do not change student names, subject headings or tab names.`);
   }
-
   // ---------- Upload: reads CA/Exam pairs under each subject heading ----------
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -132,11 +155,9 @@ function TeacherScores() {
       if (!cls || (classId !== "all" && sheetName !== wb.SheetNames[0])) { skipped.push(sheetName); continue; }
       const d = await fetchClass(cls.id);
       if (!d) { setBusy(false); return; }
-
       const grid = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName], { header: 1, defval: "" });
       const head = grid[0] ?? [];
       const maxRow = grid[1] ?? [];
-
       // Find each subject group from the headings (merged cell value sits in its first column)
       const bySubject = new Map(d.subjects.map((s) => [norm(s.name), s]));
       const cols: { s: Opt; ca: number; exam: number; caMax: number; exMax: number }[] = [];
@@ -149,14 +170,12 @@ function TeacherScores() {
         const exMax = Number(maxRow[c + 1]) > 0 ? Number(maxRow[c + 1]) : 60;
         cols.push({ s, ca: c, exam: c + 1, caMax, exMax });
       }
-
       // Match students by name
       const byName = new Map<string, Stu[]>();
       for (const st of d.students) {
         const k = norm(st.name);
         byName.set(k, [...(byName.get(k) ?? []), st]);
       }
-
       const rows: Row[] = [];
       for (let i = 2; i < grid.length; i++) {
         const line = grid[i];
@@ -177,7 +196,10 @@ function TeacherScores() {
             const n = Math.round(Number(raw));
             const limit = kind === "ca" ? 40 : 60; // the server checks this again
             if (Number.isNaN(n) || n < 0 || n > Math.min(mx, limit)) errors.push(`${cls.name} ${st.name}: ${col.s.name} ${label} = "${raw}" (max ${Math.min(mx, limit)})`);
-            else scores.push({ subjectId: col.s.id, kind, score: n });
+            else {
+              const old = d.scores.find(x => x.student_id === st.id && x.subject_id === col.s.id && x.kind === kind);
+              scores.push({ subjectId: col.s.id, kind, score: n, expected: old?.score ?? null });
+            }
           }
         }
         rows.push({ loginId: st.login_id, scores });
@@ -190,6 +212,8 @@ function TeacherScores() {
       return setMsg(`Fix these and re-upload: ${errors.slice(0, 8).join("; ")}${errors.length > 8 ? ` … and ${errors.length - 8} more` : ""}`);
     }
     setPending(groups);
+    setUncertain(false);
+    persist(groups);
     const n = groups.reduce((a, g) => a + g.rows.length, 0);
     setMsg(
       `${n} students read from ${groups.length} class${groups.length === 1 ? "" : "es"}.` +
@@ -198,30 +222,67 @@ function TeacherScores() {
       " Press Save scores."
     );
   }
-
   async function save() {
+    if (!draftScope || !online || uncertain || !pending.length || !ready) return;
     setBusy(true);
-    try {
-      let saved = 0; const unknown: string[] = [];
-      for (const g of pending) {
-        const r = await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "save", classId: g.classId, rows: g.rows }),
-        });
-        const d = await r.json().catch(() => ({}));
-        if (r.status === 401) { setSignedOut(true); throw new Error("Your session ended. Please sign in again."); }
-        if (!r.ok) throw new Error(d.error || "Could not save the scores.");
-        saved += d.saved; unknown.push(...d.unknown);
+    let saved = 0;
+    const unknown: string[] = [];
+    // Split into atomic protected transactions of <= 400 score entries.
+    const batches: Group[] = [];
+    for (const g of pending) {
+      let rows: Row[] = [];
+      let count = 0;
+      for (const row of g.rows) {
+        for (const score of row.scores) {
+          if (count === 400) { batches.push({ ...g, rows }); rows = []; count = 0; }
+          rows.push({ loginId: row.loginId, scores: [score] });
+          count++;
+        }
       }
-      setMsg(`${saved} scores saved.${unknown.length ? " Not in their class: " + unknown.join(", ") : ""} The school admin will publish the results.`);
-      setPending([]);
-    } catch (e) { setMsg((e as Error).message); }
-    setBusy(false);
+      if (rows.length) batches.push({ ...g, rows });
+    }
+    // Retain all remaining work after each confirmed batch; uncertain requests are never retried blindly.
+    let remaining = batches;
+    persist(remaining);
+    try {
+      for (const batch of batches) {
+        let response: Response;
+        try {
+          response = await fetch(API, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save-protected", classId: batch.classId, rows: batch.rows }),
+          });
+        } catch {
+          setUncertain(true);
+          throw new Error("Connection lost during save. Some scores may have reached the server. Do not retry this upload. Reconnect, download a fresh template, verify marks, and upload again.");
+        }
+        const result = await response.json().catch(() => null);
+        if (response.status === 401) { setSignedOut(true); throw new Error("Session expired. Sign in again."); }
+        if (!response.ok) throw new Error(result?.error || "Scores were not saved. Review term locks, approvals, and conflicts.");
+        saved += Number(result?.saved ?? 0);
+        unknown.push(...(Array.isArray(result?.unknown) ? result.unknown : []));
+        remaining = remaining.slice(1);
+        setPending(remaining);
+        if (remaining.length) persist(remaining);
+        else clearTeacherDraft(draftScope);
+      }
+      setMsg(`${saved} score entries saved safely.${unknown.length ? " Unknown students: " + unknown.join(", ") : ""} The school admin will publish results.`);
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : "Could not save scores.");
+      setPending(remaining);
+    } finally { setBusy(false); }
   }
 
   return (
     <>
+      {!online && <p role="status">Offline. You can keep working in Excel, but saving requires an internet connection.</p>}
+      {storageWarning && <p role="status">{storageWarning}</p>}
+      {restore && <div role="status" style={{ padding: 12, border: "1px solid #c7a35c", marginBottom: 12 }}>
+        Unsaved Excel upload found ({new Date(restore.savedAt).toLocaleString()}). Restoring does not save to the server.
+        <button type="button" onClick={() => { setPending(restore.groups); setRestore(null); setUncertain(false); }}>Restore upload</button>
+        <button type="button" onClick={() => { if (draftScope) clearTeacherDraft(draftScope); setRestore(null); }}>Discard upload</button>
+      </div>}
+      {uncertain && <p role="alert">Save status uncertain. Download a fresh template and verify server marks before uploading again.</p>}
       <div className="tch" style={{ minHeight: 0, background: "transparent" }}>
         <header className="tch-header">
           <div className="tch-header-in">
@@ -239,36 +300,30 @@ function TeacherScores() {
           </div>
         </header>
       </div>
-
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 16px 60px" }}>
         <div className="adm">
-          <h1>Scores — upload CA &amp; Exam</h1>
+          <h1>Scores — upload CA & Exam</h1>
           {msg && <p className="adm-msg">{msg}</p>}
-
           {signedOut && <p>Your session ended. <a href="/teacher">Sign in again</a>.</p>}
           {!signedOut && !loaded && <p>Loading...</p>}
           {!signedOut && loaded && classes.length === 0 && <p>You have no classes or subjects yet. Please see the school admin.</p>}
-
           {!signedOut && loaded && classes.length > 0 && (
             <>
               {!term && <p className="adm-msg">No current term has been set. Please see the school admin.</p>}
               {term && term.locked && <p className="adm-msg">{term.label} is locked, so scores cannot be changed now.</p>}
               {term && !term.locked && <p style={{ fontWeight: 600 }}>Current term: {term.label}</p>}
-
-              <select value={classId} onChange={(e) => { setClassId(e.target.value); setPending([]); }}>
+              <select value={classId} onChange={(e) => { setClassId(e.target.value); }}>
                 <option value="all">All my classes (one file, a tab per class)</option>
                 {classes.map((c) => <option key={c.id} value={c.id}>{c.name} only</option>)}
               </select>
-
               <h2>1. Download template</h2>
               <button disabled={busy || !ready} onClick={template}>{busy ? "Working…" : "Download Excel template"}</button>
               <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>
                 The sheet has only your subjects. A class teacher gets every subject of their class. Scores already saved are filled in.
               </p>
-
               <h2>2. Upload filled file</h2>
               <input type="file" accept=".xlsx,.xls" onChange={onFile} disabled={busy || !ready} />
-              <button disabled={!pending.length || busy || !ready} onClick={save}>Save scores</button>
+              <button disabled={!pending.length || busy || !ready || !online || uncertain || !!restore || !draftScope} onClick={save}>Save scores</button>
               <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>
                 CA is out of 40 and Exam is out of 60. Saving again replaces the scores you saved before. Results are published by the school admin.
               </p>

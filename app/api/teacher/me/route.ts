@@ -58,7 +58,11 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    teacher: { name: teacher.name, email: teacher.email },
+  teacher: {
+  id: teacher.id,
+  name: teacher.name,
+  email: teacher.email,
+},
     classes: result,
   });
 }

@@ -1,22 +1,36 @@
-/* Teacher dashboard header notifications on desktop and mobile. */
+/* DKPS Stage 17 — polished teacher dashboard notification popover. */
 .tch-notification-menu-wrap { position: relative; display: inline-flex; align-items: center; }
-.tch-notification-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid #d9e1ea; border-radius: 50%; background: #fff; cursor: pointer; font-size: 19px; }
-.tch-notification-trigger:hover { background: #f5f0e5; }
-.tch-notification-trigger:focus-visible { outline: 2px solid #d4ad58; outline-offset: 2px; }
-.tch-notification-badge { position: absolute; top: -5px; right: -6px; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 999px; background: #c62828; color: #fff; font-size: 11px; font-weight: 700; }
-.tch-notification-dropdown { position: absolute; right: 0; top: calc(100% + 10px); z-index: 1250; width: min(360px, calc(100vw - 32px)); padding: 14px; background: #fff; color: #071f3d; border: 1px solid #d9e1ea; border-top: 3px solid #d4ad58; border-radius: 12px; box-shadow: 0 14px 34px rgba(7,31,61,.2); }
-.tch-notification-dropdown-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.tch-notification-dropdown-head strong { font-size: 1rem; }
-.tch-notification-dropdown-head button { border: 0; background: transparent; color: #123c69; font-weight: 600; cursor: pointer; font-size: .8rem; }
-.tch-notification-dropdown-list { max-height: 300px; overflow-y: auto; }
-.tch-notification-dropdown-list p { margin: 12px 0 4px; font-size: .88rem; }
-.tch-notification-view-all { display: block; width: 100%; margin-top: 12px; padding: 10px; border: 1px solid #d9e1ea; border-radius: 9px; background: #fff; color: #071f3d; font-weight: 600; cursor: pointer; }
-.tch-notification-view-all:hover { background: #f5f0e5; }
+.tch-notification-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; padding: 0; border: 1px solid #e2e8f0; border-radius: 50%; background: #fff; color: #071f3d; cursor: pointer; font-size: 19px; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.tch-notification-trigger:hover, .tch-notification-trigger[aria-expanded="true"] { background: #fff8e9; border-color: #d4ad58; }
+.tch-notification-trigger:focus-visible { outline: 3px solid #d4ad58; outline-offset: 3px; }
+.tch-notification-badge { position: absolute; top: -5px; right: -6px; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 999px; background: #bd2837; color: #fff; font-size: 11px; font-weight: 800; line-height: 1; box-shadow: 0 0 0 2px #fff; }
+.tch-notification-dropdown { position: absolute; right: 0; top: calc(100% + 12px); z-index: 1250; box-sizing: border-box; width: min(390px, calc(100vw - 32px)); padding: 0; overflow: hidden; background: #fff; color: #071f3d; border: 1px solid #e3e9f0; border-top: 3px solid #d4ad58; border-radius: 16px; box-shadow: 0 22px 55px rgba(7,31,61,.2), 0 4px 12px rgba(7,31,61,.07); text-align: left; }
+.tch-notification-dropdown-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 19px 20px 14px; }
+.tch-notification-dropdown-head strong { display: block; font-size: 1.08rem; font-weight: 800; letter-spacing: -.02em; color: #071f3d; }
+.tch-notification-dropdown-head button { padding: 7px 9px; border: 0; border-radius: 8px; background: #edf3f9; color: #123c69; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.tch-notification-dropdown-head button:hover { background: #e0eaf5; }
+/* The tab controls are rendered by page.tsx, so style them here rather than changing logic. */
+.tch-notification-dropdown .tch-notification-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 0 16px 12px; padding: 5px; border-radius: 11px; background: #f1f4f8; }
+.tch-notification-dropdown .tch-notification-tabs button { min-width: 0; min-height: 36px; padding: 7px 4px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #64748b; font: inherit; font-size: .81rem; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.tch-notification-dropdown .tch-notification-tabs button:hover { color: #071f3d; }
+.tch-notification-dropdown .tch-notification-tabs button.active, .tch-notification-dropdown .tch-notification-tabs button[aria-pressed="true"] { background: #fff; color: #071f3d; border-color: #e4eaf1; box-shadow: 0 1px 4px rgba(7,31,61,.09); }
+.tch-notification-dropdown-list { max-height: min(320px, 45vh); min-height: 96px; overflow-y: auto; padding: 3px 18px 14px; overscroll-behavior: contain; }
+.tch-notification-dropdown-list > p { margin: 0; padding: 28px 12px; border: 1px dashed #e2e8f0; border-radius: 11px; background: #fafbfd; color: #66758b; font-size: .87rem; line-height: 1.6; text-align: center; }
+.tch-notification-dropdown-list > a { transition: border-color .15s ease, box-shadow .15s ease; }
+.tch-notification-dropdown-list > a:hover { border-color: #d4ad58 !important; box-shadow: 0 2px 8px rgba(7,31,61,.08); }
+.tch-notification-view-all { display: block; box-sizing: border-box; width: calc(100% - 36px); min-height: 42px; margin: 0 18px 17px; padding: 10px 14px; border: 1px solid #d4ad58; border-radius: 10px; background: #fffaf0; color: #123c69; font: inherit; font-size: .85rem; font-weight: 800; text-align: center; cursor: pointer; transition: background .15s ease; }
+.tch-notification-view-all:hover { background: #f8edcf; }
+.tch-notification-dropdown button:focus-visible { outline: 2px solid #d4ad58; outline-offset: 2px; }
 @media (max-width: 700px) {
   .tch-notification-menu-wrap { display: inline-flex; }
-  /* teacher.css hides ordinary header text spans on phones; keep the bell and badge visible. */
+  /* Older teacher.css rules hide ordinary spans in the mobile header. */
   .tch-me .tch-notification-trigger > span { display: inline-flex; text-align: center; }
   .tch-me .tch-notification-trigger > .tch-notification-badge { display: grid; }
-  .tch-notification-dropdown { width: min(360px, calc(100vw - 28px)); right: -48px; }
   .tch-notification-trigger { width: 40px; height: 40px; }
+  .tch-notification-dropdown { position: fixed; top: 78px; right: 12px; left: 12px; width: auto; max-width: 420px; margin-left: auto; max-height: calc(100dvh - 100px); overflow-y: auto; border-radius: 15px; }
+  .tch-notification-dropdown-head { padding: 17px 17px 12px; }
+  .tch-notification-dropdown .tch-notification-tabs { margin-right: 13px; margin-left: 13px; }
+  .tch-notification-dropdown-list { padding-right: 14px; padding-left: 14px; }
+  .tch-notification-view-all { width: calc(100% - 28px); margin-right: 14px; margin-left: 14px; }
 }
+@media (max-width: 380px) { .tch-notification-dropdown { right: 8px; left: 8px; } .tch-notification-dropdown .tch-notification-tabs button { font-size: .75rem; } }
