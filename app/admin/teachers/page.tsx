@@ -37,6 +37,12 @@ export default function AdminTeachers() {
   const [psel, setPsel] = useState<Set<string>>(new Set()); // "classId|subjectId" ticks for the open teacher
   const [moveSel, setMoveSel] = useState<Set<string>>(new Set());
   const [moveTo, setMoveTo] = useState("");
+  const [handoverKind, setHandoverKind] = useState<"subject" | "class">("subject");
+  const [handoverFrom, setHandoverFrom] = useState("");
+  const [handoverTo, setHandoverTo] = useState("");
+  const [handoverPairs, setHandoverPairs] = useState<Set<string>>(new Set());
+  const [handoverClass, setHandoverClass] = useState("");
+  const [handoverReason, setHandoverReason] = useState("");
   const [pw, setPw] = useState("");
   const [nm, setNm] = useState("");
   const [em, setEm] = useState("");
@@ -180,6 +186,32 @@ export default function AdminTeachers() {
     if (ok) { setOpenId(""); setMoveSel(new Set()); setMoveTo(""); }
   }
 
+  async function performHandover() {
+    const from = teachers.find((t) => t.id === handoverFrom);
+    const to = teachers.find((t) => t.id === handoverTo);
+    if (!from || !to) return;
+    const pairs = [...handoverPairs].map((k) => {
+      const [class_id, subject_id] = k.split("|");
+      return { class_id, subject_id };
+    });
+    const description = handoverKind === "class"
+      ? cname(handoverClass)
+      : pairs.map((p) => `${cname(p.class_id)} — ${sname(p.subject_id)}`).join(", ");
+    if (!(await ask({
+      title: "Confirm teacher handover?",
+      message: `Transfer ${description} from ${from.name} to ${to.name}? Existing scores and historical records will remain unchanged.`,
+      confirmText: "Confirm handover",
+    }))) return;
+    const ok = await act({
+      action: "handover", kind: handoverKind, fromId: from.id, toId: to.id,
+      pairs, classId: handoverClass, reason: handoverReason.trim(),
+    }, `Handover completed: ${description} transferred to ${to.name}.`);
+    if (ok) {
+      setHandoverPairs(new Set()); setHandoverClass(""); setHandoverReason("");
+      setHandoverFrom(""); setHandoverTo(""); setOpenId("");
+    }
+  }
+
   return (
     <div className="adm">
       <h1>Teachers</h1>
@@ -189,7 +221,9 @@ export default function AdminTeachers() {
       </p>
       {msg && <p className="adm-msg">{msg}</p>}
 
-      <h2>1. Add a teacher</h2>
+      <details style={{ ...box, marginTop: 20 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: "1.15rem", padding: "6px 2px" }}>1. Add a teacher</summary>
+        <div style={{ paddingTop: 12 }}>
       <div className="adm-row">
         <select value={nf.title} onChange={(e) => setNf({ ...nf, title: e.target.value })}>
           <option value="">Title</option>
@@ -206,7 +240,83 @@ export default function AdminTeachers() {
         The teacher signs in with this email and password. They will be able to change the password themselves later.
       </p>
 
-      <h2>2. Teachers ({teachers.length})</h2>
+      </div>
+      </details>
+
+      <details style={{ ...box, marginTop: 18 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: "1.15rem", padding: "6px 2px" }}>2. Teacher handover</summary>
+        <div style={{ paddingTop: 12 }}>
+        <p>Transfer a specific subject in a specific class, or transfer an entire Creche–Basic class. Scores and past teacher activity remain unchanged. Every handover is recorded.</p>
+        <div className="adm-row">
+          <label>Handover type
+            <select value={handoverKind} onChange={(e) => { setHandoverKind(e.target.value as "subject" | "class"); setHandoverPairs(new Set()); setHandoverClass(""); }}>
+              <option value="subject">Subject teacher (JSS / SSS)</option>
+              <option value="class">Class teacher (Creche / Basic)</option>
+            </select>
+          </label>
+          <label>Outgoing teacher
+            <select value={handoverFrom} onChange={(e) => { setHandoverFrom(e.target.value); setHandoverPairs(new Set()); setHandoverClass(""); }}>
+              <option value="">Select teacher</option>
+              {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+          <label>Incoming teacher
+            <select value={handoverTo} onChange={(e) => setHandoverTo(e.target.value)}>
+              <option value="">Select teacher</option>
+              {teachers.filter((t) => t.id !== handoverFrom && t.is_active).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+        </div>
+        {handoverFrom && (handoverKind === "class" ? (
+          <label>Class to hand over
+            <select value={handoverClass} onChange={(e) => setHandoverClass(e.target.value)}>
+              <option value="">Select class</option>
+              {teachers.find((t) => t.id === handoverFrom)?.classTeacher.filter((id) => eligible.some((c) => c.id === id)).map((id) => (
+                <option key={id} value={id}>{cname(id)}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div>
+            <strong>Select exact class–subject pairs</strong>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 20px", marginTop: 8 }}>
+              {teachers.find((t) => t.id === handoverFrom)?.subjects.filter((p) => secIds.has(p.class_id)).map((p) => (
+                <label key={key(p.class_id, p.subject_id)} style={{ display: "flex", alignItems: "center" }}>
+                  <input type="checkbox" style={chk} checked={handoverPairs.has(key(p.class_id, p.subject_id))}
+                    onChange={() => setHandoverPairs(flip(handoverPairs, key(p.class_id, p.subject_id)))} />
+                  {cname(p.class_id)} — {sname(p.subject_id)}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+        <label style={{ display: "block", marginTop: 12 }}>Reason for handover (required)
+          <textarea style={{ display: "block", width: "100%", minHeight: 70 }} maxLength={500}
+            value={handoverReason} onChange={(e) => setHandoverReason(e.target.value)}
+            placeholder="e.g. Teacher reassigned to another class" />
+        </label>
+        <button style={{ marginTop: 10 }} disabled={busy || !handoverFrom || !handoverTo || handoverFrom === handoverTo || handoverReason.trim().length < 3 ||
+          (handoverKind === "class" ? !handoverClass : !handoverPairs.size)} onClick={performHandover}>
+          Confirm teacher handover
+        </button>
+        </div>
+      </details>
+
+      
+<details
+  open
+  style={{ ...box, marginTop: 18 }}
+>
+  <summary
+    style={{
+      cursor: "pointer",
+      fontWeight: 700,
+      fontSize: "1.15rem",
+      padding: "6px 2px",
+    }}
+  >
+    3. Teachers ({teachers.length})
+  </summary>
       {teachers.length === 0 && <p>No teachers yet.</p>}
       {teachers.map((t) => {
         const open = openId === t.id;
@@ -344,6 +454,7 @@ export default function AdminTeachers() {
           </div>
         );
       })}
+      </details>
     </div>
   );
 }

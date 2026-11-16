@@ -96,11 +96,6 @@ function TeacherAssignments() {
     return d;
   };
     const name = (l: Opt[], id: string) => l.find((x) => x.id === id)?.name ?? "?";
-  async function signOut() {
-    await fetch("/api/teacher/session", { method: "DELETE" }).catch(() => {});
-    window.location.href = "/teacher";
-  }
-
   async function load() {
     try {
       const r = await fetch(API);
@@ -367,9 +362,8 @@ function TeacherAssignments() {
             </div>
               <div className="tch-me">
               <a className="tch-btn tch-light tch-back-link" href="/teacher" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-                ← My classes
+                ← Back to dashboard
               </a>
-              <button className="tch-btn tch-light" onClick={signOut}>Log out</button>
             </div>
           </div>
         </header>

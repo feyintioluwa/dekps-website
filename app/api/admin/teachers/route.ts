@@ -163,6 +163,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // ---------- Stage 17: atomic, audited teacher handover ----------
+  if (b.action === "handover") {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const fromId = String(b.fromId ?? "");
+    const toId = String(b.toId ?? "");
+    const kind = String(b.kind ?? "");
+    const reason = String(b.reason ?? "").trim();
+    if (!uuid.test(fromId) || !uuid.test(toId) || fromId === toId) return fail("Choose two different teachers", 400);
+    if (!['subject', 'class'].includes(kind)) return fail("Choose a handover type", 400);
+    if (reason.length < 3 || reason.length > 500) return fail("Enter a reason (3 to 500 characters)", 400);
+    const raw = kind === "subject" && Array.isArray(b.pairs) ? b.pairs : [];
+    if (kind === "subject" && (!raw.length || raw.length > 100 || raw.some((p: unknown) => {
+      if (!p || typeof p !== "object") return true;
+      const pair = p as Record<string, unknown>;
+      return !uuid.test(String(pair.class_id ?? "")) || !uuid.test(String(pair.subject_id ?? ""));
+    }))) return fail("Select valid class-subject assignments (maximum 100)", 400);
+    const classId = kind === "class" ? String(b.classId ?? "") : null;
+    if (kind === "class" && !uuid.test(classId ?? "")) return fail("Select a class", 400);
+    const { data, error } = await sb.rpc("admin_handover_teacher", {
+      p_from: fromId, p_to: toId, p_kind: kind,
+      p_pairs: raw, p_class_id: classId, p_reason: reason,
+    });
+    if (error) return fail(error.message, 400);
+    return NextResponse.json({ ok: true, transferred: data });
+  }
+
   // ---------- move one or more subjects from one teacher to another ----------
   if (b.action === "moveSubjects") {
     if (!b.fromId || !b.toId) return fail("Choose the teacher to move the subjects to", 400);

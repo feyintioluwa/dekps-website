@@ -12,7 +12,6 @@ type TeacherHeaderProps = {
 
 export default function TeacherHeader({
   teacher,
-  onSignOut,
   backHref,
   backLabel = "Back to dashboard",
 }: TeacherHeaderProps) {
@@ -28,10 +27,9 @@ export default function TeacherHeader({
         </div>
         {backHref ? (
           <Link href={backHref} style={{ color: "#fff", textDecoration: "none", fontWeight: 700, fontSize: ".85rem", whiteSpace: "nowrap" }}>{backLabel}</Link>
-        ) : teacher && onSignOut ? (
+        ) : teacher ? (
           <div className="tch-me">
             <span><b>{teacher.name}</b><small>{teacher.email}</small></span>
-            <button type="button" className="tch-btn tch-light" onClick={onSignOut}>Log out</button>
           </div>
         ) : null}
       </div>
