@@ -374,9 +374,7 @@ export default function Dashboard() {
                   <span className="dt-welcome-eyebrow">
                     {data.term ? `${data.term.session} · ${data.term.term}` : "STUDENT LEARNING DASHBOARD"}
                   </span>
-                  
                 <h1>Welcome back, {data.student.name.trim().split(/\s+/)[1] || data.student.name.trim().split(/\s+/)[0]}!</h1>
-
                   <p>Here's your learning overview. Stay on top of your schoolwork.</p>
                   <div className="dt-welcome-badges">
                     <span className="dt-welcome-class">{data.student.className}</span>
@@ -497,38 +495,74 @@ export default function Dashboard() {
               <Link href="/assignments" className="cbt-btn" style={linkBtn} onClick={(e) => openPage(e, "/assignments")}>Open assignments</Link>
             </div>
           )}
-          {/* ---------------- TESTS ---------------- */}
-          {tab === "tests" && (
-            <div className="cbt-card">
-              <span className="cbt-tag">Tests &amp; Exams</span>
-              {testsOpen ? (
-                <>
-                  <h3 style={{ marginTop: 6 }}>{data.tests.count > 0 ? `${data.tests.count} open now` : "Nothing open right now"}</h3>
-                  {data.tests.items.map((t, i) => (
-                    <p key={i} style={{ color: "#687385", fontSize: ".9rem" }}>
-                      {t.subject} ({t.kind === "exam" ? "Exam" : "Test"}){t.end ? ` · closes ${fmt(t.end)}` : ""}
-                    </p>
-                  ))}
-                  <Link href="/cbt" className="cbt-btn" style={linkBtn} onClick={(e) => openPage(e, "/cbt")}>Go to tests &amp; exams</Link>
-                </>
-              ) : (
-                <>
-                  <h3 style={{ marginTop: 6 }}>Tests and exams are locked</h3>
-                  {access?.classOpen ? (
-                    <form onSubmit={unlock}>
-                      <p style={{ color: "#687385", marginBottom: 10 }}>Enter the code your teacher wrote on the board.</p>
-                      <input placeholder="6-character code" value={code} maxLength={6} onChange={(e) => setCode(e.target.value.toUpperCase())} autoComplete="off" />
-                      {codeMsg && <div className="cbt-err">{codeMsg}</div>}
-                      <button className="cbt-btn" disabled={busy || code.trim().length < 6}>{busy ? "Checking..." : "Unlock"}</button>
-                    </form>
-                  ) : (
-                    <p style={{ color: "#687385" }}>Your teacher has not opened tests yet. They unlock in school.</p>
-                  )}
-                  <Link href="/cbt" style={{ ...linkBtn, fontSize: ".85rem" }} onClick={(e) => openPage(e, "/cbt")}>Already in a test? Resume it</Link>
-                </>
-              )}
-            </div>
-          )}
+            {/* ---------------- TESTS ---------------- */}
+            {tab === "tests" && (
+              <section className="cbt-card dt-exam-access">
+                <span className="cbt-tag">Tests &amp; Exams</span>
+                {testsOpen ? (
+                  <>
+                    <h3 className="dt-exam-title">
+                      {data.tests.count > 0 ? `${data.tests.count} open now` : "Nothing open right now"}
+                    </h3>
+                    {data.tests.items.map((t, i) => (
+                      <p key={i} className="dt-exam-description">
+                        {t.subject} ({t.kind === "exam" ? "Exam" : "Test"})
+                        {t.end ? ` · closes ${fmt(t.end)}` : ""}
+                      </p>
+                    ))}
+                    <Link href="/cbt" className="cbt-btn dt-exam-open" onClick={(e) => openPage(e, "/cbt")}>
+                      Go to tests &amp; exams
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="dt-exam-title">Tests and exams are locked</h3>
+                    {access?.classOpen ? (
+                      <form className="dt-exam-form" onSubmit={unlock}>
+                        <p className="dt-exam-description">
+                          Enter the 6-character access code provided by your teacher.
+                        </p>
+                        <label htmlFor="dt-exam-code">Examination access code</label>
+                        <input
+                          id="dt-exam-code"
+                          name="examCode"
+                          type="text"
+                          placeholder="Enter 6-character code"
+                          value={code}
+                          maxLength={6}
+                          onChange={(e) => setCode(e.target.value.toUpperCase())}
+                          autoComplete="off"
+                          autoCapitalize="characters"
+                          spellCheck={false}
+                          required
+                        />
+                        {codeMsg && <div className="cbt-err" role="alert">{codeMsg}</div>}
+                        <button
+                          type="submit"
+                          className="dt-exam-unlock"
+                          disabled={busy || code.trim().length < 6}
+                        >
+                          {busy ? "Checking..." : "Unlock examination"}
+                        </button>
+                      </form>
+                    ) : (
+                      <p className="dt-exam-description">
+                        Your teacher has not opened tests yet. They unlock in school.
+                      </p>
+                    )}
+                    <div className="dt-exam-resume">
+                      <div>
+                        <strong>Already started a test?</strong>
+                        <p>Continue from where you stopped.</p>
+                      </div>
+                      <Link href="/cbt" className="dt-exam-resume-link" onClick={(e) => openPage(e, "/cbt")}>
+                        Resume test →
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
           {/* ---------------- RESULTS ---------------- */}
           {tab === "results" && (
             <div className="cbt-card">
