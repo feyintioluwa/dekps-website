@@ -374,7 +374,9 @@ export default function Dashboard() {
                   <span className="dt-welcome-eyebrow">
                     {data.term ? `${data.term.session} · ${data.term.term}` : "STUDENT LEARNING DASHBOARD"}
                   </span>
-                  <h1>Welcome back, {data.student.name.split(/\\\s+/)[0]}!</h1>
+                  
+                <h1>Welcome back, {data.student.name.trim().split(/\s+/)[1] || data.student.name.trim().split(/\s+/)[0]}!</h1>
+
                   <p>Here's your learning overview. Stay on top of your schoolwork.</p>
                   <div className="dt-welcome-badges">
                     <span className="dt-welcome-class">{data.student.className}</span>
