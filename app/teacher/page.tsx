@@ -1,24 +1,30 @@
 "use client";
 
 import "./teacher-profile-avatar.css";
+
 import "./teacher-desktop-profile-menu.css";
+
 import "./teacher-header-notifications.css";
-
-
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import "./teacher.css";
+
 import "./teacher-continue.css";
+
 import ContinueWorking from "./ContinueWorking";
+
 import TeacherAvatar from "./TeacherAvatar";
+
 import QuickActions from "./QuickActions";
+
 import AcademicTermIndicator from "./AcademicTermIndicator";
+
 import "./teacher-academic-term.css";
+
 import "./teacher-quick-actions.css";
+
 import "./teacher-dashboard-overview.css";
-
-
 
 type Subject = { id: string; name: string };
 
@@ -44,11 +50,7 @@ type Student = { id: string; login_id: string; name: string };
 
 type Note = { id: string; assignmentId: string; student: string; className: string; subject: string; title: string; submittedAt: string; read: boolean };
 
-
-
 const NETWORK = "Could not reach the server. Check your internet and try again.";
-
-
 
 export default function TeacherPage() {
 
@@ -60,15 +62,11 @@ export default function TeacherPage() {
 
   const [busy, setBusy] = useState(false);
 
-
-
   const [email, setEmail] = useState("");
 
   const [password, setPassword] = useState("");
 
   const [showPw, setShowPw] = useState(false);
-
-
 
   const [openClass, setOpenClass] = useState<ClassCard | null>(null);
 
@@ -79,10 +77,10 @@ export default function TeacherPage() {
   const [q, setQ] = useState("");
 
   const [notes, setNotes] = useState<Note[]>([]);
+
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+
   const [statsError, setStatsError] = useState(false);
-
-
 
   async function loadMe(): Promise<boolean> {
 
@@ -94,12 +92,16 @@ export default function TeacherPage() {
 
       if (res.ok) {
 
+        setDashboardStats(null);
+        setStatsError(false);
         setMe(d);
 
         return true;
 
       }
 
+      setDashboardStats(null);
+      setStatsError(false);
       setMe(null);
 
       // 401 just means "not signed in yet": no message needed
@@ -116,8 +118,6 @@ export default function TeacherPage() {
 
   }
 
-
-
   useEffect(() => {
 
     (async () => {
@@ -130,40 +130,46 @@ export default function TeacherPage() {
 
   }, []);
 
-
-
   // New submissions for this teacher (loaded once they are signed in)
 
-  async function loadNotes() {
-
-    try {
-
-      const res = await fetch("/api/teacher/notifications");
-
-      if (res.ok) setNotes((await res.json()).items ?? []);
-
-    } catch { /* the bell just stays empty */ }
-
-  }
-
-  useEffect(() => { if (me) loadNotes(); }, [me]);
-
   useEffect(() => {
-    if (!me) { setDashboardStats(null); setStatsError(false); return; }
+    if (!me) return;
     const controller = new AbortController();
-    setDashboardStats(null);
-    setStatsError(false);
-    fetch("/api/teacher/dashboard-stats", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+    fetch("/api/teacher/notifications", { signal: controller.signal, cache: "no-store" })
       .then(async (res) => {
-        if (!res.ok) throw new Error("Stats request failed");
-        return res.json() as Promise<DashboardStats>;
+        if (!res.ok) return null;
+        return (await res.json()) as { items?: Note[] };
       })
-      .then((data) => { if (!controller.signal.aborted) setDashboardStats(data); })
-      .catch(() => { if (!controller.signal.aborted) setStatsError(true); });
+      .then((data) => {
+        if (!controller.signal.aborted && data) setNotes(data.items ?? []);
+      })
+      .catch(() => {});
     return () => controller.abort();
   }, [me]);
 
+  useEffect(() => {
 
+    if (!me) return;
+
+    const controller = new AbortController();
+
+    fetch("/api/teacher/dashboard-stats", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
+
+      .then(async (res) => {
+
+        if (!res.ok) throw new Error("Stats request failed");
+
+        return res.json() as Promise<DashboardStats>;
+
+      })
+
+      .then((data) => { if (!controller.signal.aborted) setDashboardStats(data); })
+
+      .catch(() => { if (!controller.signal.aborted) setStatsError(true); });
+
+    return () => controller.abort();
+
+  }, [me]);
 
   function readNote(id: string) {
 
@@ -198,47 +204,83 @@ export default function TeacherPage() {
   }
 
   const [showAll, setShowAll] = useState(false);
+
   const [notificationTab, setNotificationTab] = useState<"all" | "unread" | "read">("unread");
+
   const [showScoreOptions, setShowScoreOptions] = useState(false);
+
   const [showReviewOptions, setShowReviewOptions] = useState(false);
+
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
+
   const notificationMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+
     if (!profileMenuOpen) return;
+
     const closeOutside = (event: PointerEvent) => {
+
       if (!profileMenuRef.current?.contains(event.target as Node)) {
+
         setProfileMenuOpen(false);
+
       }
+
     };
+
     const closeOnEscape = (event: KeyboardEvent) => {
+
       if (event.key === "Escape") setProfileMenuOpen(false);
+
     };
+
     document.addEventListener("pointerdown", closeOutside);
+
     document.addEventListener("keydown", closeOnEscape);
+
     return () => {
+
       document.removeEventListener("pointerdown", closeOutside);
+
       document.removeEventListener("keydown", closeOnEscape);
+
     };
+
   }, [profileMenuOpen]);
 
-
   useEffect(() => {
+
     if (!notificationMenuOpen) return;
+
     const closeOutside = (event: PointerEvent) => {
+
       if (!notificationMenuRef.current?.contains(event.target as Node)) setNotificationMenuOpen(false);
+
     };
+
     const closeOnEscape = (event: KeyboardEvent) => {
+
       if (event.key === "Escape") setNotificationMenuOpen(false);
+
     };
+
     document.addEventListener("pointerdown", closeOutside);
+
     document.addEventListener("keydown", closeOnEscape);
+
     return () => {
+
       document.removeEventListener("pointerdown", closeOutside);
+
       document.removeEventListener("keydown", closeOnEscape);
+
     };
+
   }, [notificationMenuOpen]);
 
   const totalStudents = me?.classes.reduce((total, c) => total + c.studentCount, 0) ?? 0;
@@ -248,21 +290,37 @@ export default function TeacherPage() {
   const unread = unreadNotes.length;
 
   const filteredNotes = notes.filter((n) =>
+
     notificationTab === "all" ? true : notificationTab === "unread" ? !n.read : n.read
+
   );
+
   const notificationTabs = (
+
     <div className="tch-notification-tabs" role="group" aria-label="Filter notifications">
+
       {(["all", "unread", "read"] as const).map((tab) => (
+
         <button key={tab} type="button" aria-pressed={notificationTab === tab}
+
           className={notificationTab === tab ? "active" : ""}
+
           onClick={() => setNotificationTab(tab)}>
+
           {tab === "all" ? `All (${notes.length})` : tab === "unread" ? `Unread (${unread})` : `Read (${notes.length - unread})`}
+
         </button>
+
       ))}
+
     </div>
+
   );
+
   const emptyNotificationMessage = notificationTab === "unread"
+
     ? "You are all caught up. Nothing new is waiting."
+
     : notificationTab === "read" ? "No read notifications yet." : "No notifications yet.";
 
   useEffect(() => {
@@ -305,8 +363,6 @@ export default function TeacherPage() {
 
   );
 
-
-
   async function signIn(e: FormEvent<HTMLFormElement>) {
 
     e.preventDefault();
@@ -314,8 +370,6 @@ export default function TeacherPage() {
     setMsg("");
 
     if (!email.trim() || !password) return setMsg("Enter your email and password.");
-
-
 
     setBusy(true);
 
@@ -357,13 +411,14 @@ export default function TeacherPage() {
 
   }
 
-
-
   async function signOut() {
 
     await fetch("/api/teacher/session", { method: "DELETE" }).catch(() => {});
 
     setMe(null);
+    setNotes([]);
+    setDashboardStats(null);
+    setStatsError(false);
 
     setOpenClass(null);
 
@@ -374,8 +429,6 @@ export default function TeacherPage() {
     setMsg("");
 
   }
-
-
 
   async function openStudents(c: ClassCard) {
 
@@ -413,8 +466,6 @@ export default function TeacherPage() {
 
   }
 
-
-
   const shown = students.filter((s) => {
 
     const t = q.trim().toLowerCase();
@@ -422,8 +473,6 @@ export default function TeacherPage() {
     return !t || s.name.toLowerCase().includes(t) || s.login_id.toLowerCase().includes(t);
 
   });
-
-
 
   return (
 
@@ -436,7 +485,6 @@ export default function TeacherPage() {
           <div className="tch-brand">
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
-
             <img src="/assets/kps-logo.png" alt="School logo" />
 
             <div>
@@ -448,8 +496,6 @@ export default function TeacherPage() {
             </div>
 
           </div>
-
-
 
           {me && (
 
@@ -464,62 +510,117 @@ export default function TeacherPage() {
               </span>
 
               <div className="tch-notification-menu-wrap" ref={notificationMenuRef}>
+
                 <button
+
                   type="button"
+
                   className="tch-notification-trigger"
+
                   aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications, none unread"}
+
                   aria-expanded={notificationMenuOpen}
+
                   aria-controls="tch-notification-dropdown"
+
                   onClick={() => { setProfileMenuOpen(false); setNotificationMenuOpen((open) => !open); }}
+
                 >
+
                   <span aria-hidden="true">🔔</span>
+
                   {unread > 0 && <span className="tch-notification-badge">{unread}</span>}
+
                 </button>
+
                 {notificationMenuOpen && (
+
                   <div id="tch-notification-dropdown" className="tch-notification-dropdown">
+
                     <div className="tch-notification-dropdown-head">
+
                       <strong>Notifications</strong>
+
                       {unread > 0 && <button type="button" onClick={() => void readAllNotes()}>Mark all as read</button>}
+
                     </div>
+
                     {notificationTabs}
+
                     <div className="tch-notification-dropdown-list">
+
                       {filteredNotes.length === 0 ? (
+
                         <p className="tch-muted">{emptyNotificationMessage}</p>
+
                       ) : (
+
                         filteredNotes.slice(0, 5).map(noteRow)
+
                       )}
+
                     </div>
+
                     {notes.length > 0 && (
+
                       <button type="button" className="tch-notification-view-all" onClick={() => { setNotificationMenuOpen(false); setShowAll(true); }}>
+
                         View all notifications
+
                       </button>
+
                     )}
+
                   </div>
+
                 )}
+
               </div>
 
               <div className="tch-profile-menu-wrap" ref={profileMenuRef}>
+
                 <button
+
                   type="button"
+
                   className="tch-profile-avatar tch-profile-menu-trigger"
+
                   aria-label="Open teacher account menu"
+
                   aria-haspopup="menu"
+
                   aria-expanded={profileMenuOpen}
+
                   aria-controls="tch-profile-menu"
+
                   onClick={() => { setNotificationMenuOpen(false); setProfileMenuOpen((open) => !open); }}
+
                 >
+
                   <TeacherAvatar name={me.teacher.name} />
+
                 </button>
+
                 {profileMenuOpen && (
+
                   <div id="tch-profile-menu" className="tch-profile-dropdown" role="menu">
+
                     <a href="/teacher/profile" role="menuitem" onClick={() => setProfileMenuOpen(false)}>
+
                       Profile &amp; Settings
+
                     </a>
+
                     <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); void signOut(); }}>
+
                       Log out
+
                     </button>
+
                   </div>
+
                 )}
+
               </div>
 
             </div>
@@ -530,13 +631,9 @@ export default function TeacherPage() {
 
       </header>
 
-
-
       <main className="tch-main">
 
         {checking && <p className="tch-muted tch-center">Loading...</p>}
-
-
 
         {!checking && !me && (
 
@@ -545,8 +642,6 @@ export default function TeacherPage() {
             <h1>Teacher Sign In</h1>
 
             <p className="tch-muted">Use the email and password the school gave you.</p>
-
-
 
             <form onSubmit={signIn}>
 
@@ -569,8 +664,6 @@ export default function TeacherPage() {
                 required
 
               />
-
-
 
               <label htmlFor="t-pw">Password</label>
 
@@ -600,11 +693,7 @@ export default function TeacherPage() {
 
               </div>
 
-
-
               <p className="tch-error" role="alert">{msg}</p>
-
-
 
               <button className="tch-btn" type="submit" disabled={busy}>
 
@@ -618,8 +707,6 @@ export default function TeacherPage() {
 
         )}
 
-
-
         {!checking && me && !openClass && (
 
           <section>
@@ -630,47 +717,78 @@ export default function TeacherPage() {
 
             {msg && <p className="tch-error" role="alert">{msg}</p>}
 
-
-
             <AcademicTermIndicator />
 
             <div className="tch-overview" aria-label="Teacher dashboard overview">
+
               <div className="tch-overview-item">
+
                 <span className="tch-overview-label">My Classes</span>
+
                 <strong className="tch-overview-number">{me.classes.length}</strong>
+
                 <span className="tch-overview-detail">Assigned classes</span>
+
               </div>
+
               <div className="tch-overview-item">
+
                 <span className="tch-overview-label">My Students</span>
+
                 <strong className="tch-overview-number">{totalStudents}</strong>
+
                 <span className="tch-overview-detail">Across my classes</span>
+
               </div>
+
               <div className="tch-overview-item">
+
                 <span className="tch-overview-label">Pending Tasks</span>
+
                 <strong className={dashboardStats?.pendingTasks != null ? "tch-overview-number" : "tch-overview-pending"}>
+
                   {statsError ? "Unavailable" : dashboardStats?.noActiveTerm ? "—" : dashboardStats?.pendingTasks ?? "Loading…"}
+
                 </strong>
+
                 <span className="tch-overview-detail">{statsError ? "Could not load task data" : dashboardStats?.noActiveTerm ? "No active term" : dashboardStats ? `${dashboardStats.drafts ?? 0} drafts · ${dashboardStats.unmarked ?? 0} unmarked submissions` : "Checking assignments and tests"}</span>
+
               </div>
+
               <div className="tch-overview-item">
+
                 <span className="tch-overview-label">Missing Scores</span>
+
                 <strong className={dashboardStats?.missingScores != null ? "tch-overview-number" : "tch-overview-pending"}>
+
                   {statsError ? "Unavailable" : dashboardStats?.noActiveTerm ? "—" : dashboardStats?.missingScores ?? "Loading…"}
+
                 </strong>
+
                 <span className="tch-overview-detail">{statsError ? "Could not load score data" : dashboardStats?.noActiveTerm ? "No active term" : "Outstanding CA and exam marks"}</span>
+
               </div>
+
             </div>
 
             <ContinueWorking email={me.teacher.email} />
+
             <QuickActions />
 
             <a href="/teacher/score-history" className="tch-history-row">
+
               <span className="tch-history-icon" aria-hidden="true">↺</span>
+
               <span className="tch-history-copy">
+
                 <strong>Score Editing History</strong>
+
                 <small>Review score changes and who made them</small>
+
               </span>
+
               <span className="tch-history-arrow" aria-hidden="true">›</span>
+
             </a>
 
             {showAll && (
@@ -710,8 +828,11 @@ export default function TeacherPage() {
                   )}
 
                   <div style={{ padding: "8px 18px" }}>{notificationTabs}</div>
+
                   <div style={{ overflowY: "auto", padding: "0 18px 18px" }}>
+
                     {filteredNotes.length ? filteredNotes.map(noteRow) : <p className="tch-muted">{emptyNotificationMessage}</p>}
+
                   </div>
 
                 </div>
@@ -720,11 +841,12 @@ export default function TeacherPage() {
 
             )}
 
-
-
             <div className="tch-tools-heading">
+
               <h2>Teacher Tools</h2>
+
               <p className="tch-muted">Manage assignments, assessments, scores, and your classes.</p>
+
             </div>
 
             {me.classes.length === 0 ? (
@@ -782,33 +904,57 @@ export default function TeacherPage() {
                 </a>
 
                 <button
+
                   type="button"
+
                   className="tch-card tch-assign-card"
+
                   onClick={() => setShowScoreOptions(true)}
+
                   aria-haspopup="dialog"
+
                   style={{textAlign:"left",width:"100%",font:"inherit",color:"inherit",cursor:"pointer"}}
+
                 >
+
                   <div className="tch-class-top"><h2>Score Management</h2></div>
+
                   <p className="tch-muted">Enter and manage student scores using the online or Excel broadsheet.</p>
+
                   <span className="tch-btn" style={{display:"inline-flex",alignItems:"center",justifyContent:"center"}}>Manage scores</span>
+
                 </button>
 
                 <button
+
                   type="button"
+
                   className="tch-card tch-assign-card"
+
                   onClick={() => setShowReviewOptions(true)}
+
                   aria-haspopup="dialog"
+
                   style={{textAlign:"left",width:"100%",font:"inherit",color:"inherit",cursor:"pointer"}}
+
                 >
+
                   <div className="tch-class-top"><h2>Score Review &amp; Corrections</h2></div>
+
                   <p className="tch-muted">Submit scores for Admin approval, track reviews, or request corrections to published results.</p>
+
                   <span className="tch-btn" style={{display:"inline-flex",alignItems:"center",justifyContent:"center"}}>Manage score reviews</span>
+
                 </button>
 
                 <a className="tch-card tch-assign-card" href="/teacher/classes">
+
                   <div className="tch-class-top"><h2>My Classes</h2><span className="tch-badge">{me.classes.length} assigned</span></div>
+
                   <p className="tch-muted">View your assigned classes, subjects, and student lists in one place.</p>
+
                   <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>View my classes</span>
+
                 </a>
 
               </div>
@@ -819,62 +965,112 @@ export default function TeacherPage() {
 
         )}
 
-
-
         {showScoreOptions && !checking && me && !openClass && (
+
           <div
+
             role="presentation"
+
             onMouseDown={(e) => { if (e.target === e.currentTarget) setShowScoreOptions(false); }}
+
             style={{position:"fixed",inset:0,zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16,background:"rgba(7,31,61,.6)"}}
+
           >
+
             <section
+
               role="dialog"
+
               aria-modal="true"
+
               aria-labelledby="score-options-title"
+
               onKeyDown={(e) => { if (e.key === "Escape") setShowScoreOptions(false); }}
+
               style={{width:"100%",maxWidth:420,background:"#fff",borderRadius:14,padding:24,boxShadow:"0 20px 55px rgba(7,31,61,.28)"}}
+
             >
+
               <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+
                 <div>
+
                   <h2 id="score-options-title" style={{margin:"0 0 8px",color:"#071f3d"}}>Choose Broadsheet</h2>
+
                   <p className="tch-muted" style={{margin:"0 0 20px"}}>How would you like to manage scores?</p>
+
                 </div>
+
                 <button type="button" aria-label="Close score options" onClick={() => setShowScoreOptions(false)} style={{border:0,background:"transparent",fontSize:24,cursor:"pointer",color:"#55627a"}}>×</button>
+
               </div>
+
               <div style={{display:"grid",gap:12}}>
+
                 <a href="/teacher/broadsheet" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48}}>Online Broadsheet</a>
+
                 <a href="/teacher/scores" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48}}>Excel Broadsheet</a>
+
               </div>
+
             </section>
+
           </div>
+
         )}
 
         {showReviewOptions && !checking && me && !openClass && (
+
           <div
+
             role="presentation"
+
             onMouseDown={(e) => { if (e.target === e.currentTarget) setShowReviewOptions(false); }}
+
             style={{position:"fixed",inset:0,zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16,background:"rgba(7,31,61,.6)"}}
+
           >
+
             <section
+
               role="dialog"
+
               aria-modal="true"
+
               aria-labelledby="review-options-title"
+
               onKeyDown={(e) => { if (e.key === "Escape") setShowReviewOptions(false); }}
+
               style={{width:"100%",maxWidth:420,background:"#fff",borderRadius:14,padding:24,boxShadow:"0 20px 55px rgba(7,31,61,.28)"}}
+
             >
+
               <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+
                 <div>
+
                   <h2 id="review-options-title" style={{margin:"0 0 8px",color:"#071f3d"}}>Score Review &amp; Corrections</h2>
+
                   <p className="tch-muted" style={{margin:"0 0 20px"}}>What would you like to do?</p>
+
                 </div>
+
                 <button type="button" aria-label="Close review options" onClick={() => setShowReviewOptions(false)} style={{border:0,background:"transparent",fontSize:24,cursor:"pointer",color:"#55627a"}}>×</button>
+
               </div>
+
               <div style={{display:"grid",gap:12}}>
+
                 <a href="/teacher/score-submissions" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48,textAlign:"center"}}>Score Submissions &amp; Approval</a>
+
                 <a href="/teacher/published-corrections" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48,textAlign:"center"}}>Published Result Corrections</a>
+
               </div>
+
             </section>
+
           </div>
+
         )}
 
         {!checking && me && openClass && (
@@ -897,11 +1093,7 @@ export default function TeacherPage() {
 
             </p>
 
-
-
             {msg && <p className="tch-error" role="alert">{msg}</p>}
-
-
 
             <input
 
@@ -916,8 +1108,6 @@ export default function TeacherPage() {
               onChange={(e) => setQ(e.target.value)}
 
             />
-
-
 
             {loadingStudents ? (
 

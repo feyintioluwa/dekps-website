@@ -1,4 +1,4 @@
-/* Desktop header notification dropdown. Mobile Alerts navigation is unchanged. */
+/* Teacher dashboard header notifications on desktop and mobile. */
 .tch-notification-menu-wrap { position: relative; display: inline-flex; align-items: center; }
 .tch-notification-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid #d9e1ea; border-radius: 50%; background: #fff; cursor: pointer; font-size: 19px; }
 .tch-notification-trigger:hover { background: #f5f0e5; }
@@ -12,10 +12,11 @@
 .tch-notification-dropdown-list p { margin: 12px 0 4px; font-size: .88rem; }
 .tch-notification-view-all { display: block; width: 100%; margin-top: 12px; padding: 10px; border: 1px solid #d9e1ea; border-radius: 9px; background: #fff; color: #071f3d; font-weight: 600; cursor: pointer; }
 .tch-notification-view-all:hover { background: #f5f0e5; }
-@media (max-width: 700px) { .tch-notification-menu-wrap { display: none; } }
-
-/* All / Unread / Read filters */
-.tch-notification-tabs { display: flex; gap: 5px; margin: 12px 0 4px; padding: 4px; border-radius: 10px; background: #f1f4f8; }
-.tch-notification-tabs button { flex: 1; min-width: 0; padding: 8px 5px; border: 0; border-radius: 7px; background: transparent; color: #52617a; font: inherit; font-size: .78rem; font-weight: 650; cursor: pointer; }
-.tch-notification-tabs button.active { background: #fff; color: #071f3d; box-shadow: 0 1px 5px rgba(7,31,61,.12); }
-.tch-notification-tabs button:focus-visible { outline: 2px solid #d4ad58; outline-offset: 1px; }
+@media (max-width: 700px) {
+  .tch-notification-menu-wrap { display: inline-flex; }
+  /* teacher.css hides ordinary header text spans on phones; keep the bell and badge visible. */
+  .tch-me .tch-notification-trigger > span { display: inline-flex; text-align: center; }
+  .tch-me .tch-notification-trigger > .tch-notification-badge { display: grid; }
+  .tch-notification-dropdown { width: min(360px, calc(100vw - 28px)); right: -48px; }
+  .tch-notification-trigger { width: 40px; height: 40px; }
+}
