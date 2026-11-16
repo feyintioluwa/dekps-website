@@ -1,0 +1,275 @@
+
+/* =========================================
+   DKPS STAGE 15 — STUDENT ARRANGEMENT
+   Desktop + Mobile Responsive Design
+   ========================================= */
+
+/* Arrangement toolbar */
+.tch-arrange-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.tch-arrange-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  border: 1px solid #e5d8ad;
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #58471f;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Desktop arrangement table */
+.tch-arrange-table {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  width: 100%;
+}
+
+.tch-arrange-table thead th {
+  border: 0;
+  background: transparent;
+  padding: 8px 12px;
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tch-arrange-table tbody td {
+  background: #fff;
+  padding: 13px 12px;
+  border-top: 1px solid #e5eaf1;
+  border-bottom: 1px solid #e5eaf1;
+  vertical-align: middle;
+}
+
+.tch-arrange-table tbody td:first-child {
+  border-left: 1px solid #e5eaf1;
+  border-radius: 12px 0 0 12px;
+}
+
+.tch-arrange-table tbody td:last-child {
+  border-right: 1px solid #e5eaf1;
+  border-radius: 0 12px 12px 0;
+}
+
+/* Student position */
+.tch-arrange-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: #edf2fa;
+  color: #0c2445;
+  font-weight: 750;
+}
+
+/* Student details */
+.tch-arrange-name {
+  font-weight: 650;
+  color: #102746;
+}
+
+.tch-arrange-login {
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* Move controls */
+.tch-arrange-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tch-arrange-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #d5dce7;
+  border-radius: 10px;
+  background: #fff;
+  color: #0b2445;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+  box-shadow: 0 1px 2px #122a4610;
+}
+
+.tch-arrange-arrow:hover:not(:disabled) {
+  background: #fff7e6;
+  border-color: #cda84e;
+  transform: translateY(-1px);
+}
+
+.tch-arrange-arrow:focus-visible {
+  outline: 3px solid #cda84e;
+  outline-offset: 2px;
+}
+
+.tch-arrange-arrow:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.tch-arrange-arrow svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Cancel button */
+.tch-arrange-cancel {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #173153;
+  padding: 10px 16px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.tch-arrange-cancel:hover:not(:disabled) {
+  background: #f3f6fa;
+}
+
+.tch-arrange-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   MOBILE STUDENT ARRANGEMENT
+   ========================================= */
+
+/* Hidden on desktop */
+.tch-arrange-mobile-list {
+  display: none;
+}
+
+@media (max-width: 700px) {
+
+  /* Replace desktop table with mobile cards */
+  .tch-arrange-table {
+    display: none;
+  }
+
+  .tch-arrange-mobile-list {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0;
+  }
+
+  .tch-arrange-mobile-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 12px 10px;
+    border: 1px solid #e5eaf1;
+    border-radius: 14px;
+    background: #fff;
+  }
+
+  .tch-arrange-mobile-info {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+    overflow-wrap: anywhere;
+  }
+
+  .tch-arrange-mobile-info strong {
+    font-size: 14px;
+    line-height: 1.35;
+    color: #102746;
+  }
+
+  .tch-arrange-mobile-info span {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .tch-arrange-mobile-card .tch-arrange-number {
+    flex-shrink: 0;
+    min-width: 32px;
+    height: 32px;
+  }
+
+  .tch-arrange-mobile-card .tch-arrange-controls {
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  /* Touch-friendly mobile buttons */
+  .tch-arrange-mobile-card .tch-arrange-arrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Responsive Save / Cancel toolbar */
+  .tch-arrange-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .tch-arrange-toolbar button {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .tch-arrange-toolbar:has(> :only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .tch-arrange-mobile-card {
+    gap: 7px;
+    padding: 10px 7px;
+  }
+
+  .tch-arrange-mobile-card .tch-arrange-arrow {
+    width: 42px;
+    height: 44px;
+  }
+
+  .tch-arrange-mobile-card .tch-arrange-controls {
+    gap: 4px;
+  }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .tch-arrange-arrow {
+    transition: none;
+  }
+
+  .tch-arrange-arrow:hover:not(:disabled) {
+    transform: none;
+  }
+}

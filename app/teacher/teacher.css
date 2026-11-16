@@ -57,3 +57,56 @@
   .tch-back-link{display:none}
   .tch-card{padding:18px}
 }
+
+
+/* DKPS — Student names typography refinement */
+
+.tch-table tbody td:nth-child(2) {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.15px;
+  line-height: 1.5;
+  color: #102746;
+  text-transform: none;
+}
+
+.tch-table tbody tr {
+  height: 52px;
+}
+
+.tch-table tbody td {
+  vertical-align: middle;
+}
+
+@media (max-width: 600px) {
+  .tch-table tbody td:nth-child(2) {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.45;
+  }
+}
+
+
+/* DKPS — Student Login ID typography */
+
+.tch-table tbody td:nth-child(3) {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1.5;
+  color: #475569;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .tch-table tbody td:nth-child(3) {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+  }
+}
