@@ -1,29 +1,421 @@
-.hm{font-family:Poppins,Arial,sans-serif;color:#18212f;background:#f4f6f9;min-height:100vh;display:flex;flex-direction:column}
-.hm-top{background:#071f3d;color:#fff;border-bottom:4px solid #d4ad58}
-.hm-top div{width:min(1180px,92%);margin:auto;min-height:84px;display:flex;align-items:center;gap:14px}
-.hm-top img{width:60px;height:60px;object-fit:contain}
-.hm-top h1{font-size:1.1rem;letter-spacing:.04em;font-weight:800}
-.hm-hero{background:linear-gradient(135deg,#071f3d,#123f73);color:#fff;text-align:center;padding:90px 20px 100px}
-.hm-hero span{display:inline-block;padding:8px 14px;border:1px solid rgba(255,255,255,.2);border-radius:50px;font-size:.7rem;font-weight:800;letter-spacing:.13em;margin-bottom:18px}
-.hm-hero h2{font-size:clamp(2rem,5vw,3.4rem);line-height:1.1;margin-bottom:14px}
-.hm-hero p{max-width:620px;margin:0 auto 28px;color:#d7e2ee}
-.hm-btn{display:inline-block;background:#d4ad58;color:#071f3d;font-weight:800;padding:14px 28px;border-radius:8px;text-decoration:none}
-.hm-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
-.hm-actions .hm-btn{text-align:center}
-.hm-cards{width:min(1000px,92%);margin:-50px auto 60px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.hm-card{background:#fff;border:1px solid #dfe4ea;border-radius:12px;padding:22px;box-shadow:0 12px 35px rgba(7,31,61,.09)}
-.hm-card h3{color:#071f3d;margin-bottom:6px}
-.hm-card p{color:#687385;font-size:.92rem}
-.hm-foot{margin-top:auto;background:#071f3d;color:#aebdcc;border-top:3px solid #d4ad58;text-align:center;padding:26px 12px;font-size:.85rem}
-.hm-foot strong{color:#fff}
-@media(max-width:700px){
-  .hm-cards{grid-template-columns:1fr}
-  .hm-actions{flex-direction:column;align-items:stretch;max-width:340px;margin:0 auto}
+
+/* =========================================
+   DKPS HOMEPAGE
+   ========================================= */
+
+.hm {
+  font-family: Poppins, Arial, sans-serif;
+  color: #18212f;
+  background: #f4f6f9;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
 }
-@media(max-width:700px){
- .hm-top div{gap:8px}
- .hm-top img{width:44px;height:44px}
- .hm-top h1{font-size:clamp(14px,4.4vw,20px);line-height:1.2;white-space:normal;text-wrap:balance}
+
+.hm *,
+.hm *::before,
+.hm *::after {
+  box-sizing: border-box;
 }
-.hm-notices{grid-template-columns:1fr}
-.hm-notices + .hm-cards{margin-top:20px}
+
+/* =========================================
+   HEADER
+   ========================================= */
+
+.hm-top {
+  background: #071f3d;
+  color: #fff;
+  border-bottom: 4px solid #d4ad58;
+}
+
+.hm-top-inner {
+  width: min(1180px, 92%);
+  margin: auto;
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hm-top img {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.hm-top h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================
+   MAIN
+   ========================================= */
+
+.hm-main {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+/* =========================================
+   HERO
+   ========================================= */
+
+.hm-hero {
+  background: linear-gradient(135deg, #071f3d, #123f73);
+  color: #fff;
+  text-align: center;
+  padding: 90px 20px 100px;
+}
+
+.hm-session {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50px;
+  color: #f0d48d;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  margin-bottom: 18px;
+}
+
+.hm-hero h2 {
+  max-width: 850px;
+  margin: 0 auto 14px;
+  color: #fff;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.hm-hero p {
+  max-width: 620px;
+  margin: 0 auto 28px;
+  color: #d7e2ee;
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
+/* =========================================
+   BUTTONS
+   ========================================= */
+
+.hm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+.hm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 14px 28px;
+  border: 1px solid #d4ad58;
+  border-radius: 9px;
+  background: #d4ad58;
+  color: #071f3d;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hm-btn:hover {
+  background: #e8c678;
+  border-color: #e8c678;
+  transform: translateY(-2px);
+}
+
+.hm-btn-outline {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.hm-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #fff;
+  color: #fff;
+}
+
+.hm-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+}
+
+/* =========================================
+   SCHOOL ANNOUNCEMENTS
+   ========================================= */
+
+.hm-notice-section {
+  width: min(1000px, 92%);
+  margin: 36px auto 0;
+}
+
+.hm-section-heading {
+  margin-bottom: 18px;
+}
+
+.hm-section-heading h2 {
+  margin: 0 0 5px;
+  color: #071f3d;
+  font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+  font-weight: 800;
+}
+
+.hm-section-heading p {
+  margin: 0;
+  color: #687385;
+  font-size: 0.9rem;
+}
+
+.hm-notices {
+  width: 100%;
+  margin: 0;
+  grid-template-columns: 1fr;
+}
+
+.hm-notice-date {
+  display: block;
+  margin: 3px 0 9px;
+  color: #687385;
+  font-size: 0.76rem;
+}
+
+.hm-notice-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================
+   INFORMATION CARDS
+   ========================================= */
+
+.hm-cards {
+  width: min(1000px, 92%);
+  margin: -50px auto 60px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.hm-card {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #dfe4ea;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 12px 35px rgba(7, 31, 61, 0.09);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hm-card:hover {
+  border-color: #d4ad58;
+  box-shadow: 0 14px 35px rgba(7, 31, 61, 0.12);
+  transform: translateY(-2px);
+}
+
+.hm-card h3 {
+  margin: 0 0 8px;
+  color: #071f3d;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.hm-card p {
+  margin: 0;
+  color: #687385;
+  font-size: 0.92rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+/* Notices must not overlap the hero. */
+.hm-notice-section .hm-cards {
+  margin: 0;
+}
+
+/* When notices are present, place info cards
+   below them with normal spacing. */
+.hm-info-after-notices {
+  margin-top: 30px;
+}
+
+/* =========================================
+   FOOTER
+   ========================================= */
+
+.hm-foot {
+  margin-top: auto;
+  background: #071f3d;
+  color: #aebdcc;
+  border-top: 3px solid #d4ad58;
+  text-align: center;
+  padding: 26px 12px;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.hm-foot strong {
+  display: block;
+  color: #fff;
+  font-weight: 800;
+}
+
+/* =========================================
+   TABLET
+   ========================================= */
+
+@media (max-width: 900px) {
+  .hm-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hm-notices {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+@media (max-width: 700px) {
+  .hm-top-inner {
+    min-height: 74px;
+    gap: 10px;
+  }
+
+  .hm-top img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hm-top h1 {
+    font-size: clamp(14px, 4.4vw, 20px);
+    line-height: 1.25;
+    letter-spacing: 0.015em;
+    white-space: normal;
+    text-wrap: balance;
+  }
+
+  .hm-hero {
+    padding: 58px 18px 82px;
+  }
+
+  .hm-session {
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+  }
+
+  .hm-hero h2 {
+    font-size: clamp(1.85rem, 7vw, 2.5rem);
+    line-height: 1.2;
+  }
+
+  .hm-hero p {
+    font-size: 0.91rem;
+    line-height: 1.7;
+    margin-bottom: 24px;
+  }
+
+  .hm-actions {
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 340px;
+    margin: 0 auto;
+    gap: 12px;
+  }
+
+  .hm-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 13px 20px;
+  }
+
+  .hm-cards {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 40px;
+  }
+
+  .hm-card {
+    padding: 20px;
+  }
+
+  .hm-notice-section {
+    margin-top: 28px;
+  }
+
+  .hm-info-after-notices {
+    margin-top: 24px;
+  }
+
+  .hm-foot {
+    padding: 24px 16px;
+  }
+}
+
+/* =========================================
+   SMALL PHONES
+   ========================================= */
+
+@media (max-width: 380px) {
+  .hm-top h1 {
+    font-size: 13px;
+  }
+
+  .hm-hero {
+    padding: 48px 15px 75px;
+  }
+
+  .hm-hero h2 {
+    font-size: 1.8rem;
+  }
+
+  .hm-card {
+    padding: 18px;
+  }
+}
+
+/* =========================================
+   REDUCED MOTION
+   ========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-btn,
+  .hm-card {
+    transition: none;
+  }
+
+  .hm-btn:hover,
+  .hm-card:hover {
+    transform: none;
+  }
+}

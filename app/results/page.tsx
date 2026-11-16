@@ -1,17 +1,14 @@
 "use client";
-
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import "./results.css";
 import "./extra.css";
 import Link from "next/link";
-
 type Subject = {
   subject: string;
   ca: number | null;
   exam: number | null;
   total: number | null;
 };
-
 type Student = {
   login_id: string;
   name: string;
@@ -26,9 +23,7 @@ type Student = {
   teacher_remark: string | null;
   subjects: Subject[];
 };
-
 type TermOption = { id: number; term: string; session: string };
-
 function getGrade(score: number | null): string {
   if (score === null || !Number.isFinite(score)) return "-";
   if (score >= 70) return "A";
@@ -38,11 +33,9 @@ function getGrade(score: number | null): string {
   if (score >= 40) return "E";
   return "F";
 }
-
 function show(value: number | null | undefined): string {
   return value === null || value === undefined ? "-" : String(value);
 }
-
 function Detail({
   label,
   value,
@@ -57,7 +50,6 @@ function Detail({
     </div>
   );
 }
-
 export default function ResultsPage() {
   const [loginId, setLoginId] = useState("");
   const [pin, setPin] = useState("");
@@ -69,8 +61,9 @@ export default function ResultsPage() {
   const [selectedId, setSelectedId] = useState("");
   const resultRef = useRef<HTMLElement>(null);
   const firstShow = useRef(true);
+  const requestVersion = useRef(0);
+  const verified = useRef<{ loginId: string; pin: string } | null>(null);
   const [sessionLabel, setSessionLabel] = useState("");
-
   useEffect(() => {
     if (!student) {
       firstShow.current = true;
@@ -83,7 +76,6 @@ export default function ResultsPage() {
     }, 100);
     return () => clearTimeout(timer);
   }, [student]);
-
     useEffect(() => {
     fetch("/api/session")
       .then((r) => (r.ok ? r.json() : null))
@@ -94,11 +86,11 @@ export default function ResultsPage() {
     const response = await fetch("/api/result", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      cache: "no-store",
       body: JSON.stringify({ loginId: id, pin: code, resultId }),
     });
     return response.json();
   }
-
   function applyOk(data: { student: Student; terms?: TermOption[] }) {
     const list = data.terms ?? [];
     setTerms(list);
@@ -108,14 +100,11 @@ export default function ResultsPage() {
     setSelectedId(match ? String(match.id) : "");
     setStudent(data.student);
   }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-
     const id = loginId.trim();
     const code = pin.trim();
-
     if (!id) {
       setMessage("Please enter your Student Login ID.");
       return;
@@ -128,21 +117,23 @@ export default function ResultsPage() {
       setMessage("Your PIN must contain exactly 4 digits.");
       return;
     }
-
+    const version = ++requestVersion.current;
+    verified.current = null;
     setLoading(true);
     setStudent(null);
     setTerms([]);
-
+    setSelectedId("");
     try {
       const data = await request(id, code);
-
+      if (requestVersion.current !== version) return;
       if (data.status === "ok") {
         if (data.student.total === null) {
           setMessage(
             "Your result is not available yet. Please contact the school."
           );
         } else {
-          applyOk(data);
+            verified.current = { loginId: id, pin: code };
+            applyOk(data);
         }
       } else if (data.status === "locked") {
         setMessage(
@@ -156,38 +147,39 @@ export default function ResultsPage() {
         setMessage("Something went wrong. Please try again.");
       }
     } catch {
+      if (requestVersion.current !== version) return;
       setMessage(
         "Could not reach the server. Check your internet connection and try again."
       );
     } finally {
-      setLoading(false);
+      if (requestVersion.current === version) setLoading(false);
     }
   }
-
   async function changeTerm(e: ChangeEvent<HTMLSelectElement>) {
     const value = e.target.value;
-    setSelectedId(value);
-    setMessage("");
+    const identity = verified.current;
+    if (!identity || !value) return;
+    const version = ++requestVersion.current;
+    setSelectedId(value); setMessage(""); setLoading(true);
     try {
-      const data = await request(loginId.trim(), pin.trim(), Number(value));
-      if (data.status === "ok") applyOk(data);
+      const data = await request(identity.loginId, identity.pin, Number(value));
+      if (requestVersion.current !== version || verified.current !== identity) return;
+      if (data.status === "ok" && data.student.login_id === identity.loginId) applyOk(data);
       else setMessage("Could not load that term. Please try again.");
     } catch {
-      setMessage("Could not reach the server. Please try again.");
+      if (requestVersion.current === version) setMessage("Could not reach the server. Please try again.");
+    } finally {
+      if (requestVersion.current === version) setLoading(false);
     }
   }
-
   function checkAnother() {
-    setStudent(null);
-    setTerms([]);
-    setSelectedId("");
-    setMessage("");
-    setLoginId("");
-    setPin("");
-    setShowPin(false);
+    requestVersion.current++;
+    verified.current = null;
+    setStudent(null); setTerms([]); setSelectedId("");
+    setMessage(""); setLoginId(""); setPin("");
+    setShowPin(false); setLoading(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
-
   return (
     <>
             <header className="top-header">
@@ -204,7 +196,6 @@ export default function ResultsPage() {
               <small className="portal-sub">STUDENT RESULT PORTAL</small>
             </div>
           </div>
-
           <Link href="/" className="portal-home" aria-label="Back to home" title="Home">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -212,7 +203,6 @@ export default function ResultsPage() {
           </Link>
         </div>
       </header>
-
       <main>
         <section className="hero" style={student ? { display: "none" } : undefined}>
           <div className="hero-content">
@@ -224,7 +214,6 @@ export default function ResultsPage() {
             </p>
           </div>
         </section>
-
                 <section className="login-section" id="loginSection" style={student ? { display: "none" } : undefined}>
           <div className="login-card">
             <div className="login-heading">
@@ -234,7 +223,6 @@ export default function ResultsPage() {
                 <p>Enter the details provided by the school.</p>
               </div>
             </div>
-
             <form id="resultForm" onSubmit={handleSubmit}>
               <div className="form-group">
                 <label htmlFor="loginId">Student Login ID</label>
@@ -250,7 +238,6 @@ export default function ResultsPage() {
                   required
                 />
               </div>
-
               <div className="form-group">
                 <label htmlFor="pin">Result PIN</label>
                 <div className="pin-wrapper">
@@ -277,7 +264,6 @@ export default function ResultsPage() {
                   </button>
                 </div>
               </div>
-
               <div
                 id="loginMessage"
                 className="login-message"
@@ -286,7 +272,6 @@ export default function ResultsPage() {
               >
                 {message}
               </div>
-
               <button
                 type="submit"
                 id="checkResultButton"
@@ -299,7 +284,6 @@ export default function ResultsPage() {
                 <span id="buttonSpinner" className="spinner"></span>
               </button>
             </form>
-
             <div className="login-note">
               <span>ⓘ</span>
               <p>
@@ -309,7 +293,6 @@ export default function ResultsPage() {
             </div>
           </div>
         </section>
-
         <section
           id="resultSection"
           ref={resultRef}
@@ -334,7 +317,6 @@ export default function ResultsPage() {
                   </select>
                 </div>
               )}
-
               <div className="result-sheet">
                 <div className="result-header">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -354,7 +336,6 @@ export default function ResultsPage() {
                     className="verified-stamp"
                   />
                 </div>
-
                 <div className="student-details">
                   <Detail label="Student Name" value={student.name} />
                   <Detail label="Login ID" value={student.login_id} />
@@ -365,7 +346,6 @@ export default function ResultsPage() {
                   <Detail label="Result Status" value="Verified" />
                   <Detail label="Grade" value={student.grade} />
                 </div>
-
                 <div className="summary-grid">
                   <div className="summary-card">
                     <span>Total Score</span>
@@ -385,7 +365,6 @@ export default function ResultsPage() {
                     <strong>{student.grade ?? ""}</strong>
                   </div>
                 </div>
-
                 <div className="table-container">
                   <table className="result-table">
                     <thead>
@@ -419,7 +398,6 @@ export default function ResultsPage() {
                     </tbody>
                   </table>
                 </div>
-
                 <div className="remarks-grid">
                   <div className="remark-box">
                     <div className="remark-title">School Remark</div>
@@ -430,7 +408,6 @@ export default function ResultsPage() {
                     <p>{student.teacher_remark ?? ""}</p>
                   </div>
                 </div>
-
                 <div className="result-footer">
                   <div className="result-footer-note">
                     <strong>Official Result</strong>
@@ -452,7 +429,6 @@ export default function ResultsPage() {
                   </div>
                 </div>
               </div>
-
               <div className="result-actions">
                 <button
                   type="button"
@@ -473,7 +449,6 @@ export default function ResultsPage() {
           )}
         </section>
       </main>
-
       <footer className="footer">
         <div className="footer-inner">
           <div>

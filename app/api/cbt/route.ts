@@ -248,7 +248,7 @@ export async function POST(request: Request) {
   const attemptId = String(body.attemptId ?? "");
   const { data: att } = await sb
     .from("attempts")
-    .select("id, student_id, submitted_at, deadline")
+    .select("id, student_id, assessment_id, submitted_at, deadline")
     .eq("id", attemptId)
     .maybeSingle();
   if (!att || att.student_id !== studentId) return bad("not_allowed", 403);
@@ -258,9 +258,29 @@ export async function POST(request: Request) {
     if (att.deadline && new Date(att.deadline).getTime() + 15000 < now) return bad("expired", 409);
     const chosen = String(body.chosen ?? "").toUpperCase();
     if (!["A", "B", "C", "D"].includes(chosen)) return bad("invalid");
+    // Only accept answers to questions assigned to this attempt's assessment.
+    const questionId = String(body.questionId ?? "").trim();
+    if (!questionId) return bad("invalid");
+    const { data: direct, error: directError } = await sb
+      .from("questions")
+      .select("id")
+      .eq("id", questionId)
+      .eq("assessment_id", att.assessment_id)
+      .maybeSingle();
+    if (directError) return bad("error", 500);
+    if (!direct) {
+      const { data: linked, error: linkedError } = await sb
+        .from("exam_questions")
+        .select("question_id")
+        .eq("exam_id", att.assessment_id)
+        .eq("question_id", questionId)
+        .maybeSingle();
+      if (linkedError) return bad("error", 500);
+      if (!linked) return bad("not_allowed", 403);
+    }
     const { error } = await sb
       .from("answers")
-      .upsert({ attempt_id: attemptId, question_id: String(body.questionId ?? ""), chosen }, { onConflict: "attempt_id,question_id" });
+      .upsert({ attempt_id: attemptId, question_id: questionId, chosen }, { onConflict: "attempt_id,question_id" });
     if (error) {
       console.error("save failed:", error.message);
       return bad("error", 500);

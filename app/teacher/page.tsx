@@ -26,6 +26,14 @@ import "./teacher-quick-actions.css";
 
 import "./teacher-dashboard-overview.css";
 
+import ClassCompletionTracker, {
+
+  type CompletionItem,
+
+} from "./ClassCompletionTracker";
+
+import "./teacher-completion.css";
+
 type Subject = { id: string; name: string };
 
 type ClassCard = {
@@ -44,7 +52,7 @@ type ClassCard = {
 
 type Me = { teacher: { name: string; email: string }; classes: ClassCard[] };
 
-type DashboardStats = { pendingTasks: number | null; missingScores: number | null; drafts?: number; unmarked?: number; noActiveTerm?: boolean };
+type DashboardStats = { pendingTasks: number | null; missingScores: number | null; drafts?: number; unmarked?: number; noActiveTerm?: boolean; completion?: CompletionItem[] };
 
 type Student = { id: string; login_id: string; name: string };
 
@@ -93,7 +101,9 @@ export default function TeacherPage() {
       if (res.ok) {
 
         setDashboardStats(null);
+
         setStatsError(false);
+
         setMe(d);
 
         return true;
@@ -101,7 +111,9 @@ export default function TeacherPage() {
       }
 
       setDashboardStats(null);
+
       setStatsError(false);
+
       setMe(null);
 
       // 401 just means "not signed in yet": no message needed
@@ -133,18 +145,31 @@ export default function TeacherPage() {
   // New submissions for this teacher (loaded once they are signed in)
 
   useEffect(() => {
+
     if (!me) return;
+
     const controller = new AbortController();
+
     fetch("/api/teacher/notifications", { signal: controller.signal, cache: "no-store" })
+
       .then(async (res) => {
+
         if (!res.ok) return null;
+
         return (await res.json()) as { items?: Note[] };
+
       })
+
       .then((data) => {
+
         if (!controller.signal.aborted && data) setNotes(data.items ?? []);
+
       })
+
       .catch(() => {});
+
     return () => controller.abort();
+
   }, [me]);
 
   useEffect(() => {
@@ -416,8 +441,11 @@ export default function TeacherPage() {
     await fetch("/api/teacher/session", { method: "DELETE" }).catch(() => {});
 
     setMe(null);
+
     setNotes([]);
+
     setDashboardStats(null);
+
     setStatsError(false);
 
     setOpenClass(null);
@@ -485,6 +513,7 @@ export default function TeacherPage() {
           <div className="tch-brand">
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
+
             <img src="/assets/kps-logo.png" alt="School logo" />
 
             <div>
@@ -770,6 +799,14 @@ export default function TeacherPage() {
               </div>
 
             </div>
+
+              <ClassCompletionTracker
+                classes={me.classes}
+                completion={dashboardStats?.completion ?? []}
+                loading={!dashboardStats && !statsError}
+                error={statsError}
+                noActiveTerm={dashboardStats?.noActiveTerm}
+              />
 
             <ContinueWorking email={me.teacher.email} />
 

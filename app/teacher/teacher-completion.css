@@ -1,0 +1,139 @@
+
+.tch-completion {
+  margin: 24px 0;
+}
+
+.tch-completion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tch-completion-header h2 {
+  margin: 0 0 6px;
+  color: #071f3d;
+  font-size: 1.25rem;
+  font-weight: 750;
+}
+
+.tch-completion-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.tch-completion-summary {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #174ea6;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.tch-completion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tch-completion-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(7, 31, 61, 0.04);
+}
+
+.tch-completion-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tch-completion-card h3 {
+  margin: 0 0 5px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #071f3d;
+}
+
+.tch-completion-card-top p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.tch-completion-percent {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #2563eb;
+  white-space: nowrap;
+}
+
+.tch-completion-percent.is-complete {
+  color: #15803d;
+}
+
+.tch-completion-track {
+  height: 9px;
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eef5;
+}
+
+.tch-completion-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #2563eb;
+  transition: width 0.35s ease;
+}
+
+.tch-completion-fill.is-complete {
+  background: #16a34a;
+}
+
+.tch-completion-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.tch-completion-done {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.tch-completion-message {
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #64748b;
+}
+
+@media (max-width: 700px) {
+  .tch-completion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tch-completion-card {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tch-completion-fill {
+    transition: none;
+  }
+}
