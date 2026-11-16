@@ -26,6 +26,7 @@ export default function TeacherMobileNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showBadges, setShowBadges] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,6 +113,24 @@ export default function TeacherMobileNav() {
     } catch { /* storage can be disabled */ }
   }, [authenticated, account, pathname]);
 
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      const response = await fetch("/api/teacher/session", {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      if (!response.ok) throw new Error("Could not log out. Please try again.");
+      setMoreOpen(false);
+      setAuthenticated(false);
+      window.location.assign("/teacher");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Could not log out.");
+      setSigningOut(false);
+    }
+  }
+
   if (!authenticated) return null;
 
   const isActive = (href: string) => href === "/teacher"
@@ -132,6 +151,9 @@ export default function TeacherMobileNav() {
           <a href="/teacher/published-corrections">Result Corrections</a>
           <a href="/teacher/classes">My Classes</a>
           <a href="/teacher/profile">Profile &amp; Settings</a>
+          <button type="button" className="teacher-mobile-more-logout" disabled={signingOut} onClick={() => void signOut()}>
+            {signingOut ? "Logging out…" : "Log out"}
+          </button>
         </div>
       )}
       <nav className="teacher-mobile-nav" aria-label="Teacher mobile navigation">

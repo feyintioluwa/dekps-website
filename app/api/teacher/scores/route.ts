@@ -598,6 +598,14 @@ export async function POST(request: Request) {
 
 
 
+    // Stage 14: deny writes to pending/approved subjects on the server.
+    // This is a request-time guard; see STAGE-14-README for DB-level hardening.
+    const { data: frozen, error: frozenError } = await db.from("score_submissions")
+      .select("subject_id,status").eq("term_id",term.id).eq("class_id",classId)
+      .in("status",["pending","approved"]);
+    if (frozenError) return fail("Could not verify score approval locks. Apply Stage 14 migration.",500);
+    const frozenSubjects = new Set((frozen ?? []).map(x=>x.subject_id));
+
     const rows = (
 
       Array.isArray(body.rows) ? body.rows : []
@@ -910,6 +918,10 @@ export async function POST(request: Request) {
     }
 
 
+
+    if (out.some(x=>frozenSubjects.has(x.subject_id))) {
+      return fail("Scores for a submitted or approved subject are locked. Withdraw pending scores or ask Admin to return them.",409);
+    }
 
     if (bad.length) {
 

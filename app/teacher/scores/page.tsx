@@ -234,7 +234,7 @@ function TeacherScores() {
               </div>
             </div>
             <a className="tch-btn tch-light" href="/teacher" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-              ← My classes
+              ← Back to dashboard
             </a>
           </div>
         </header>

@@ -6,3 +6,27 @@
 .tch-continue-link { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; padding:10px 13px; border-radius:9px; background:#071f3d; color:#fff; font-weight:600; font-size:.85rem; text-decoration:none; }
 .tch-continue-link:hover, .tch-continue-link:focus-visible { background:#123c69; color:#fff; }
 @media(max-width:420px) { .tch-continue { align-items:flex-start; flex-direction:column; } .tch-continue-link { align-self:flex-start; } }
+
+/* Compact continue card on phones; desktop styles stay unchanged. */
+@media (max-width: 700px) {
+  .tch-continue {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 10px 0;
+    padding: 10px 11px;
+    border-radius: 10px;
+  }
+  .tch-continue-copy { gap: 2px; flex: 1; min-width: 0; }
+  .tch-continue-eyebrow { font-size: .7rem; }
+  .tch-continue-copy strong { font-size: .9rem; }
+  .tch-continue-copy > span:last-child { font-size: .72rem; line-height: 1.3; }
+  .tch-continue-link {
+    align-self: center;
+    padding: 8px 9px;
+    font-size: .75rem;
+    white-space: nowrap;
+    border-radius: 8px;
+  }
+}

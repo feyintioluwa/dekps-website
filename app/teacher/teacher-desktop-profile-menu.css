@@ -1,0 +1,22 @@
+/* Desktop teacher account menu; mobile navigation remains unchanged. */
+.tch-profile-menu-wrap { position: relative; display: inline-flex; align-items: center; }
+.tch-profile-menu-trigger { cursor: pointer; padding: 0; background: transparent; font: inherit; }
+.tch-profile-menu-trigger:focus-visible { outline: 2px solid #d4ad58; outline-offset: 3px; }
+.tch-profile-dropdown {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 1200;
+  width: 210px; padding: 7px; background: #fff; color: #071f3d;
+  border: 1px solid #d9dee6; border-top: 3px solid #d4ad58;
+  border-radius: 11px; box-shadow: 0 12px 30px rgba(7,31,61,.2);
+}
+.tch-profile-dropdown a, .tch-profile-dropdown button {
+  display: block; width: 100%; box-sizing: border-box; padding: 11px 12px;
+  border: 0; border-radius: 7px; background: transparent;
+  color: #071f3d; text-align: left; text-decoration: none;
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.tch-profile-dropdown a:hover, .tch-profile-dropdown a:focus-visible,
+.tch-profile-dropdown button:hover, .tch-profile-dropdown button:focus-visible {
+  background: #f5f0e5;
+}
+.tch-profile-dropdown button { color: #a12b2b; border-top: 1px solid #e5e9ef; }
+@media (max-width: 700px) { .tch-profile-dropdown { right: 0; } }

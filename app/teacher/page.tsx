@@ -1,10 +1,12 @@
 "use client";
 
 import "./teacher-profile-avatar.css";
+import "./teacher-desktop-profile-menu.css";
+import "./teacher-header-notifications.css";
 
 
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import "./teacher.css";
 import "./teacher-continue.css";
@@ -196,6 +198,48 @@ export default function TeacherPage() {
   }
 
   const [showAll, setShowAll] = useState(false);
+  const [notificationTab, setNotificationTab] = useState<"all" | "unread" | "read">("unread");
+  const [showScoreOptions, setShowScoreOptions] = useState(false);
+  const [showReviewOptions, setShowReviewOptions] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
+  const notificationMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setProfileMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [profileMenuOpen]);
+
+
+  useEffect(() => {
+    if (!notificationMenuOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!notificationMenuRef.current?.contains(event.target as Node)) setNotificationMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNotificationMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [notificationMenuOpen]);
 
   const totalStudents = me?.classes.reduce((total, c) => total + c.studentCount, 0) ?? 0;
 
@@ -203,9 +247,23 @@ export default function TeacherPage() {
 
   const unread = unreadNotes.length;
 
-  const shownNotes = unreadNotes.slice(0, 3);          // the card shows only the 3 newest unread ones
-
-  const hiddenCount = notes.length - shownNotes.length; // anything else lives behind "View all"
+  const filteredNotes = notes.filter((n) =>
+    notificationTab === "all" ? true : notificationTab === "unread" ? !n.read : n.read
+  );
+  const notificationTabs = (
+    <div className="tch-notification-tabs" role="group" aria-label="Filter notifications">
+      {(["all", "unread", "read"] as const).map((tab) => (
+        <button key={tab} type="button" aria-pressed={notificationTab === tab}
+          className={notificationTab === tab ? "active" : ""}
+          onClick={() => setNotificationTab(tab)}>
+          {tab === "all" ? `All (${notes.length})` : tab === "unread" ? `Unread (${unread})` : `Read (${notes.length - unread})`}
+        </button>
+      ))}
+    </div>
+  );
+  const emptyNotificationMessage = notificationTab === "unread"
+    ? "You are all caught up. Nothing new is waiting."
+    : notificationTab === "read" ? "No read notifications yet." : "No notifications yet.";
 
   useEffect(() => {
 
@@ -405,15 +463,64 @@ export default function TeacherPage() {
 
               </span>
 
-              <a
-                className="tch-profile-avatar"
-                href="/teacher/profile"
-                aria-label="Open Profile and Settings"
-                title="Profile & Settings"
-              >
-                <TeacherAvatar name={me.teacher.name} />
-              </a>
-              <button className="tch-btn tch-light" onClick={signOut}>Log out</button>
+              <div className="tch-notification-menu-wrap" ref={notificationMenuRef}>
+                <button
+                  type="button"
+                  className="tch-notification-trigger"
+                  aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications, none unread"}
+                  aria-expanded={notificationMenuOpen}
+                  aria-controls="tch-notification-dropdown"
+                  onClick={() => { setProfileMenuOpen(false); setNotificationMenuOpen((open) => !open); }}
+                >
+                  <span aria-hidden="true">🔔</span>
+                  {unread > 0 && <span className="tch-notification-badge">{unread}</span>}
+                </button>
+                {notificationMenuOpen && (
+                  <div id="tch-notification-dropdown" className="tch-notification-dropdown">
+                    <div className="tch-notification-dropdown-head">
+                      <strong>Notifications</strong>
+                      {unread > 0 && <button type="button" onClick={() => void readAllNotes()}>Mark all as read</button>}
+                    </div>
+                    {notificationTabs}
+                    <div className="tch-notification-dropdown-list">
+                      {filteredNotes.length === 0 ? (
+                        <p className="tch-muted">{emptyNotificationMessage}</p>
+                      ) : (
+                        filteredNotes.slice(0, 5).map(noteRow)
+                      )}
+                    </div>
+                    {notes.length > 0 && (
+                      <button type="button" className="tch-notification-view-all" onClick={() => { setNotificationMenuOpen(false); setShowAll(true); }}>
+                        View all notifications
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="tch-profile-menu-wrap" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  className="tch-profile-avatar tch-profile-menu-trigger"
+                  aria-label="Open teacher account menu"
+                  aria-haspopup="menu"
+                  aria-expanded={profileMenuOpen}
+                  aria-controls="tch-profile-menu"
+                  onClick={() => { setNotificationMenuOpen(false); setProfileMenuOpen((open) => !open); }}
+                >
+                  <TeacherAvatar name={me.teacher.name} />
+                </button>
+                {profileMenuOpen && (
+                  <div id="tch-profile-menu" className="tch-profile-dropdown" role="menu">
+                    <a href="/teacher/profile" role="menuitem" onClick={() => setProfileMenuOpen(false)}>
+                      Profile &amp; Settings
+                    </a>
+                    <button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); void signOut(); }}>
+                      Log out
+                    </button>
+                  </div>
+                )}
+              </div>
 
             </div>
 
@@ -557,66 +664,6 @@ export default function TeacherPage() {
             <ContinueWorking email={me.teacher.email} />
             <QuickActions />
 
-            <div id="notifications" className="tch-card" style={{ margin: "14px 0" }}>
-
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-
-                <h2 style={{ margin: 0 }}>
-
-                  🔔 Notifications
-
-                  {unread > 0 && (
-
-                    <span style={{ marginLeft: 8, padding: "2px 10px", borderRadius: 999, background: "#c62828", color: "#fff", fontSize: ".8rem" }}>
-
-                      {unread} new
-
-                    </span>
-
-                  )}
-
-                </h2>
-
-                {unread > 0 && <button type="button" className="tch-link" onClick={readAllNotes}>Mark all as read</button>}
-
-              </div>
-
-              {notes.length === 0 ? (
-
-                <p className="tch-muted" style={{ margin: "8px 0 0" }}>No submissions yet. They will appear here when students hand in work.</p>
-
-              ) : unread === 0 ? (
-
-                <p className="tch-muted" style={{ margin: "8px 0 0" }}>You are all caught up. Nothing new is waiting.</p>
-
-              ) : (
-
-                shownNotes.map(noteRow)
-
-              )}
-
-              {hiddenCount > 0 && (
-
-                <button
-
-                  type="button"
-
-                  onClick={() => setShowAll(true)}
-
-                  style={{ marginTop: 10, width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #c9d3df", background: "#fff", color: "#071f3d", fontWeight: 600, cursor: "pointer" }}
-
-                >
-
-                  View all ({notes.length})
-
-                </button>
-
-              )}
-
-            </div>
-
-
-
             <a href="/teacher/score-history" className="tch-history-row">
               <span className="tch-history-icon" aria-hidden="true">↺</span>
               <span className="tch-history-copy">
@@ -646,7 +693,7 @@ export default function TeacherPage() {
 
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "16px 18px 8px" }}>
 
-                    <h2 style={{ margin: 0, fontSize: "1.1rem" }}>🔔 All notifications ({notes.length})</h2>
+                    <h2 style={{ margin: 0, fontSize: "1.1rem" }}>🔔 Notifications ({notes.length})</h2>
 
                     <button type="button" aria-label="Close" onClick={() => setShowAll(false)} style={{ border: 0, background: "transparent", fontSize: "1.6rem", lineHeight: 1, cursor: "pointer", color: "#55627a" }}>×</button>
 
@@ -662,10 +709,9 @@ export default function TeacherPage() {
 
                   )}
 
+                  <div style={{ padding: "8px 18px" }}>{notificationTabs}</div>
                   <div style={{ overflowY: "auto", padding: "0 18px 18px" }}>
-
-                    {notes.map(noteRow)}
-
+                    {filteredNotes.length ? filteredNotes.map(noteRow) : <p className="tch-muted">{emptyNotificationMessage}</p>}
                   </div>
 
                 </div>
@@ -735,47 +781,29 @@ export default function TeacherPage() {
 
                 </a>
 
-                <a className="tch-card tch-assign-card" href="/teacher/broadsheet">
+                <button
+                  type="button"
+                  className="tch-card tch-assign-card"
+                  onClick={() => setShowScoreOptions(true)}
+                  aria-haspopup="dialog"
+                  style={{textAlign:"left",width:"100%",font:"inherit",color:"inherit",cursor:"pointer"}}
+                >
+                  <div className="tch-class-top"><h2>Score Management</h2></div>
+                  <p className="tch-muted">Enter and manage student scores using the online or Excel broadsheet.</p>
+                  <span className="tch-btn" style={{display:"inline-flex",alignItems:"center",justifyContent:"center"}}>Manage scores</span>
+                </button>
 
-                  <div className="tch-class-top">
-
-                    <h2>Teacher Broadsheet</h2>
-
-                  </div>
-
-                  <p className="tch-muted">Enter CA and exam scores online, review saved marks, and track assessments.</p>
-
-                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-
-                    Open broadsheet
-
-                  </span>
-
-                </a>
-
-                <a className="tch-card tch-assign-card" href="/teacher/scores">
-
-                  <div className="tch-class-top">
-
-                    <h2>Scores</h2>
-
-                  </div>
-
-                  <p className="tch-muted">Download a broadsheet for your classes and subjects, fill it in and upload it.</p>
-
-                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-
-                    Open scores
-
-                  </span>
-
-                </a>
-
-                <a className="tch-card tch-assign-card" href="/teacher/published-corrections">
-                  <div className="tch-class-top"><h2>Published Result Corrections</h2></div>
-                  <p className="tch-muted">Request a correction to a published CA or exam score and track admin decisions.</p>
-                  <span className="tch-btn" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>View correction requests</span>
-                </a>
+                <button
+                  type="button"
+                  className="tch-card tch-assign-card"
+                  onClick={() => setShowReviewOptions(true)}
+                  aria-haspopup="dialog"
+                  style={{textAlign:"left",width:"100%",font:"inherit",color:"inherit",cursor:"pointer"}}
+                >
+                  <div className="tch-class-top"><h2>Score Review &amp; Corrections</h2></div>
+                  <p className="tch-muted">Submit scores for Admin approval, track reviews, or request corrections to published results.</p>
+                  <span className="tch-btn" style={{display:"inline-flex",alignItems:"center",justifyContent:"center"}}>Manage score reviews</span>
+                </button>
 
                 <a className="tch-card tch-assign-card" href="/teacher/classes">
                   <div className="tch-class-top"><h2>My Classes</h2><span className="tch-badge">{me.classes.length} assigned</span></div>
@@ -792,6 +820,62 @@ export default function TeacherPage() {
         )}
 
 
+
+        {showScoreOptions && !checking && me && !openClass && (
+          <div
+            role="presentation"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowScoreOptions(false); }}
+            style={{position:"fixed",inset:0,zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16,background:"rgba(7,31,61,.6)"}}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="score-options-title"
+              onKeyDown={(e) => { if (e.key === "Escape") setShowScoreOptions(false); }}
+              style={{width:"100%",maxWidth:420,background:"#fff",borderRadius:14,padding:24,boxShadow:"0 20px 55px rgba(7,31,61,.28)"}}
+            >
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+                <div>
+                  <h2 id="score-options-title" style={{margin:"0 0 8px",color:"#071f3d"}}>Choose Broadsheet</h2>
+                  <p className="tch-muted" style={{margin:"0 0 20px"}}>How would you like to manage scores?</p>
+                </div>
+                <button type="button" aria-label="Close score options" onClick={() => setShowScoreOptions(false)} style={{border:0,background:"transparent",fontSize:24,cursor:"pointer",color:"#55627a"}}>×</button>
+              </div>
+              <div style={{display:"grid",gap:12}}>
+                <a href="/teacher/broadsheet" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48}}>Online Broadsheet</a>
+                <a href="/teacher/scores" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48}}>Excel Broadsheet</a>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {showReviewOptions && !checking && me && !openClass && (
+          <div
+            role="presentation"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowReviewOptions(false); }}
+            style={{position:"fixed",inset:0,zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16,background:"rgba(7,31,61,.6)"}}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="review-options-title"
+              onKeyDown={(e) => { if (e.key === "Escape") setShowReviewOptions(false); }}
+              style={{width:"100%",maxWidth:420,background:"#fff",borderRadius:14,padding:24,boxShadow:"0 20px 55px rgba(7,31,61,.28)"}}
+            >
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
+                <div>
+                  <h2 id="review-options-title" style={{margin:"0 0 8px",color:"#071f3d"}}>Score Review &amp; Corrections</h2>
+                  <p className="tch-muted" style={{margin:"0 0 20px"}}>What would you like to do?</p>
+                </div>
+                <button type="button" aria-label="Close review options" onClick={() => setShowReviewOptions(false)} style={{border:0,background:"transparent",fontSize:24,cursor:"pointer",color:"#55627a"}}>×</button>
+              </div>
+              <div style={{display:"grid",gap:12}}>
+                <a href="/teacher/score-submissions" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48,textAlign:"center"}}>Score Submissions &amp; Approval</a>
+                <a href="/teacher/published-corrections" className="tch-btn" style={{display:"flex",justifyContent:"center",alignItems:"center",textDecoration:"none",minHeight:48,textAlign:"center"}}>Published Result Corrections</a>
+              </div>
+            </section>
+          </div>
+        )}
 
         {!checking && me && openClass && (
 

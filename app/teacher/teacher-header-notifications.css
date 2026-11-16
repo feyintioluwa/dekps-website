@@ -1,0 +1,21 @@
+/* Desktop header notification dropdown. Mobile Alerts navigation is unchanged. */
+.tch-notification-menu-wrap { position: relative; display: inline-flex; align-items: center; }
+.tch-notification-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid #d9e1ea; border-radius: 50%; background: #fff; cursor: pointer; font-size: 19px; }
+.tch-notification-trigger:hover { background: #f5f0e5; }
+.tch-notification-trigger:focus-visible { outline: 2px solid #d4ad58; outline-offset: 2px; }
+.tch-notification-badge { position: absolute; top: -5px; right: -6px; display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 999px; background: #c62828; color: #fff; font-size: 11px; font-weight: 700; }
+.tch-notification-dropdown { position: absolute; right: 0; top: calc(100% + 10px); z-index: 1250; width: min(360px, calc(100vw - 32px)); padding: 14px; background: #fff; color: #071f3d; border: 1px solid #d9e1ea; border-top: 3px solid #d4ad58; border-radius: 12px; box-shadow: 0 14px 34px rgba(7,31,61,.2); }
+.tch-notification-dropdown-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.tch-notification-dropdown-head strong { font-size: 1rem; }
+.tch-notification-dropdown-head button { border: 0; background: transparent; color: #123c69; font-weight: 600; cursor: pointer; font-size: .8rem; }
+.tch-notification-dropdown-list { max-height: 300px; overflow-y: auto; }
+.tch-notification-dropdown-list p { margin: 12px 0 4px; font-size: .88rem; }
+.tch-notification-view-all { display: block; width: 100%; margin-top: 12px; padding: 10px; border: 1px solid #d9e1ea; border-radius: 9px; background: #fff; color: #071f3d; font-weight: 600; cursor: pointer; }
+.tch-notification-view-all:hover { background: #f5f0e5; }
+@media (max-width: 700px) { .tch-notification-menu-wrap { display: none; } }
+
+/* All / Unread / Read filters */
+.tch-notification-tabs { display: flex; gap: 5px; margin: 12px 0 4px; padding: 4px; border-radius: 10px; background: #f1f4f8; }
+.tch-notification-tabs button { flex: 1; min-width: 0; padding: 8px 5px; border: 0; border-radius: 7px; background: transparent; color: #52617a; font: inherit; font-size: .78rem; font-weight: 650; cursor: pointer; }
+.tch-notification-tabs button.active { background: #fff; color: #071f3d; box-shadow: 0 1px 5px rgba(7,31,61,.12); }
+.tch-notification-tabs button:focus-visible { outline: 2px solid #d4ad58; outline-offset: 1px; }

@@ -119,6 +119,16 @@ export async function POST(request: Request) {
   }
 
   if (b.action === "publish") {
+    // Require approval of every subject assigned to this class before publication.
+    const { data: assigned, error: assignmentError } = await sb.from("class_subjects")
+      .select("subject_id").eq("class_id",b.classId);
+    if (assignmentError) return fail("Could not verify class subjects",500);
+    const { data: submissions, error: submissionError } = await sb.from("score_submissions")
+      .select("subject_id,status").eq("term_id",b.termId).eq("class_id",b.classId);
+    if (submissionError) return fail("Could not verify score approvals. Apply Stage 14 migration.",500);
+    const approved = new Set((submissions ?? []).filter(x=>x.status==="approved").map(x=>x.subject_id));
+    const missing = (assigned ?? []).filter(x=>!approved.has(x.subject_id));
+    if (missing.length) return fail(`${missing.length} class subject(s) are not approved. Review Score Approvals before publishing.`,409);
     if (!b.termLabel || !b.session) return fail("Enter the term name and session", 400);
     const { data, error } = await sb.rpc("admin_publish_results", {
       p_term: b.termId, p_class: b.classId, p_term_label: b.termLabel, p_session: b.session,

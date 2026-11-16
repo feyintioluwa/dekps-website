@@ -16,6 +16,7 @@ const NAV = [
   ["/admin/subjects", "📚", "Class Subjects"],
   ["/admin/broadsheet", "📑", "Scores & Results"],
   ["/admin/published-corrections", "🔔", "Correction Requests"],
+  ["/admin/score-submissions", "✅", "Score Approvals"],
   ["/admin/cbt", "📝", "Tests & Exams"],
   ["/admin/test-access", "🔒", "Test Access"],
   ["/admin/assignments", "📋", "Assignments"],
