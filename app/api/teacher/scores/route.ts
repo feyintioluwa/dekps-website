@@ -224,7 +224,9 @@ export async function GET(request: Request) {
 
 
 
-    const classId = new URL(request.url).searchParams.get("classId");
+    const url = new URL(request.url);
+    const classId = url.searchParams.get("classId");
+    const studentView = url.searchParams.get("view") === "student";
 
 
 
@@ -354,11 +356,18 @@ export async function GET(request: Request) {
 
 
 
+    const allClassSubjectIds = (cs.data ?? []).map(x => x.subject_id);
+    const extraSubjects = studentView
+      ? await db.from("subjects").select("id, name").in("id", allClassSubjectIds.length ? allClassSubjectIds : ["00000000-0000-0000-0000-000000000000"])
+      : null;
+    if (extraSubjects?.error) return fail("Could not load class subjects.");
+    const availableSubjects = studentView ? (extraSubjects?.data ?? []) : (subs.data ?? []);
     const subjects = (cs.data ?? [])
+      .filter(x => studentView || subjectIds.includes(x.subject_id))
 
       .map((x) =>
 
-        (subs.data ?? []).find((s) => s.id === x.subject_id)
+        availableSubjects.find((s) => s.id === x.subject_id)
 
       )
 
@@ -404,7 +413,7 @@ export async function GET(request: Request) {
 
 
 
-        term && studentIds.length && subjectIds.length
+        term && studentIds.length && (studentView ? allClassSubjectIds.length : subjectIds.length)
 
           ? db
 
@@ -416,7 +425,7 @@ export async function GET(request: Request) {
 
               .in("student_id", studentIds)
 
-              .in("subject_id", subjectIds)
+              .in("subject_id", studentView ? allClassSubjectIds : subjectIds)
 
           : Promise.resolve({
 
@@ -458,9 +467,15 @@ export async function GET(request: Request) {
 
 
 
+    const frozenResult = studentView && term
+      ? await db.from("score_submissions").select("subject_id").eq("term_id", term.id).eq("class_id", classId).in("status", ["pending", "approved"])
+      : null;
+    if (frozenResult?.error) return fail("Could not verify submission locks.");
     return NextResponse.json({
 
       term: termInfo,
+      editableSubjectIds: studentView ? subjectIds : undefined,
+      frozenSubjectIds: studentView ? (frozenResult?.data ?? []).map(x => x.subject_id) : undefined,
 
       students: students.data ?? [],
 

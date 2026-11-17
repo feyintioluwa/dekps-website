@@ -19,6 +19,8 @@ import {
 } from "@/lib/dialog";
 import "../teacher.css";
 import "./broadsheet.css";
+import "./student-mode.css";
+import StudentEntry from "./StudentEntry";
 import { readTeacherDraft, saveTeacherDraft, clearTeacherDraft, type DraftScope } from "@/lib/teacher-offline-drafts";
 type Option = {
   id: string;
@@ -139,6 +141,8 @@ function BroadsheetInner() {
   const [classes, setClasses] = useState<Option[]>([]);
   const [term, setTerm] = useState<Term>(null);
   const [classId, setClassId] = useState("");
+  const [entryMode, setEntryMode] = useState<"subject" | "student">("subject");
+  const [studentDirty, setStudentDirty] = useState(false);
   const [subjectId, setSubjectId] = useState("");
   const [data, setData] = useState<ClassData | null>(null);
   const [values, setValues] = useState<
@@ -815,6 +819,23 @@ function BroadsheetInner() {
             <button type="button" onClick={discardDraft}>Discard draft</button>
           </div>
         </div>}
+        <section className="bs-entry-mode" aria-label="Online score entry mode">
+          <span className="bs-mode-label">Online score entry</span>
+          <div className="bs-mode-options">
+            <button type="button" className={entryMode === "subject" ? "active" : ""} aria-pressed={entryMode === "subject"} onClick={async () => {
+              if (entryMode === "subject") return;
+              if (studentDirty && !(await ask({ title: "Unsaved student scores", message: "Switching modes will discard unsaved student scores.", cancelText: "Stay", confirmText: "Discard and switch" }))) return;
+              setEntryMode("subject"); setStudentDirty(false);
+            }}>By Subject</button>
+            <button type="button" className={entryMode === "student" ? "active" : ""} aria-pressed={entryMode === "student"} onClick={async () => {
+              if (entryMode === "student") return;
+              if (dirty && !(await ask({ title: "Unsaved subject scores", message: "Switching modes will discard unsaved subject scores.", cancelText: "Stay", confirmText: "Discard and switch" }))) return;
+              if (dirty) { setValues({ ...original }); }
+              setEntryMode("student");
+            }}>By Student</button>
+          </div>
+        </section>
+        {entryMode === "subject" ? <>
         <section className="bs-panel bs-selector">
           <div className="bs-panel-heading">
             <div>
@@ -1300,6 +1321,16 @@ function BroadsheetInner() {
             </section>
           </>
         )}
+        </> : <StudentEntry classId={classId} classes={classes} onDirtyChange={setStudentDirty} onClassChange={(id) => {
+          setClassId(id);
+          setData(null);
+          setSubjectId("");
+          setValues({});
+          setOriginal({});
+          setConflict(false);
+          setMessage("");
+          if (id) void loadClass(id);
+        }} />}
       </div>
     </main>
   );
