@@ -8,6 +8,17 @@ export async function GET(request: Request) {
   if ("error" in c) return NextResponse.json({ error: c.error }, { status: c.status });
   const { sb } = c;
   const classId = new URL(request.url).searchParams.get("classId");
+  const previewSubjectId = new URL(request.url).searchParams.get("renamePreview");
+  if (previewSubjectId) {
+    const [links, classes] = await Promise.all([
+      sb.from("class_subjects").select("class_id").eq("subject_id", previewSubjectId),
+      sb.from("classes").select("id, name").order("sort_order"),
+    ]);
+    if (links.error || classes.error) return NextResponse.json({ error: "Could not verify affected classes." }, { status: 500 });
+    const ids = new Set((links.data ?? []).map(x => x.class_id));
+    return NextResponse.json({ affectedClasses: (classes.data ?? []).filter(x => ids.has(x.id)).map(x => x.name) });
+  }
+
 
   if (!classId) {
     const [classes, subjects] = await Promise.all([

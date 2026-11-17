@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import "../students/admin.css";
+import "./subjects.css";
 import { useAdminKey } from "../AdminShell";
 import { useConfirm } from "../Dialog";
 
@@ -125,118 +126,281 @@ export default function ClassSubjects() {
   });
 
   const saveRename = (s: Opt) => act(async () => {
-    await post({ action: "rename", subjectId: s.id, name: editName });
+    const name = editName.trim().replace(/\s+/g, " ");
+    if (!name || name === s.name) return;
+    const preview = await fetch(`/api/admin/subjects?renamePreview=${encodeURIComponent(s.id)}`, { headers: h });
+    const details = await preview.json();
+    if (!preview.ok) throw new Error(details.error || "Could not verify affected classes.");
+    const affected: string[] = details.affectedClasses ?? [];
+    const confirmed = await ask({
+      title: "Rename subject globally?",
+      message: `Change "${s.name}" to "${name}" in ${affected.length} class${affected.length === 1 ? "" : "es"}: ${affected.join(", ") || "none currently"}. Existing scores and assignments remain linked to the same subject. Already-published results retain their saved names.`,
+      confirmText: "Rename everywhere",
+    });
+    if (!confirmed) return;
+    await post({ action: "rename", subjectId: s.id, name });
     setEditId("");
     await loadAll();
-    setMsg("Renamed. It changes in every class that uses this subject; results already published keep the old name.");
+    setMsg(`Renamed to "${name}" across ${affected.length} class${affected.length === 1 ? "" : "es"}. Already-published results keep their saved names.`);
   });
 
-  const small = { padding: "4px 10px", fontSize: 13, marginRight: 6, marginBottom: 4 } as const;
-  const cell = { padding: "6px 8px", textAlign: "left", verticalAlign: "middle" } as const;
-  const tick = { width: "auto", margin: 0 } as const;
 
   return (
-    <div className="adm">
-      <h1>Class Subjects</h1>
-      {msg && <p className="adm-msg">{msg}</p>}
+    <div className="adm subject-admin">
+      <div className="subject-admin__hero">
+        <div className="subject-admin__hero-icon" aria-hidden="true">▤</div>
+        <div>
+          <span className="subject-admin__eyebrow">ACADEMIC MANAGEMENT</span>
+          <h1>Class Subjects</h1>
+          <p>Manage class subjects, arrange their order and rename subjects across the school.</p>
+        </div>
+      </div>
 
-      {classes.length > 0 && (
+      {msg && <p className="subject-admin__notice" role="status">{msg}</p>}
+
+      {classes.length === 0 ? (
+        <div className="subject-admin__empty">No classes are available yet.</div>
+      ) : (
         <>
-          <select value={classId} onChange={(e) => { setClassId(e.target.value); setEditId(""); setAdds([]); setSel(new Set()); }}>
-            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-
-          <h2>{className}: subjects in order</h2>
-          {rows.length === 0 && <p>No subjects in this class yet.</p>}
-          {rows.length > 0 && (
-            <>
-              <div style={{ marginBottom: 8 }}>
-                <button disabled={busy || sel.size === 0} onClick={removeSelected}>
-                  {sel.size > 0 ? `Remove ${sel.size} selected` : "Remove selected"}
-                </button>
-                <span style={{ marginLeft: 10, fontSize: ".85rem", color: "#687385" }}>Tick the subjects you want to remove, then press the button.</span>
+          <section className="subject-admin__section">
+            <div className="subject-admin__section-heading">
+              <div>
+                <h2>Choose a class</h2>
+                <p>Select the class whose subject list you want to manage.</p>
               </div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...cell, width: 34 }}>
-                        <input type="checkbox" style={tick} checked={allRowsTicked} onChange={toggleAllRows} aria-label="Select all subjects" />
-                      </th>
-                      <th style={cell}>#</th><th style={cell}>Subject</th><th style={cell}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((s, i) => (
-                      <tr key={s.id} style={{ borderTop: "1px solid #ddd" }}>
-                        <td style={cell}>
-                          <input type="checkbox" style={tick} checked={sel.has(s.id)} onChange={() => toggleRow(s.id)} aria-label={`Select ${s.name}`} />
-                        </td>
-                        <td style={cell}>{i + 1}</td>
-                        <td style={cell}>
+              <span className="subject-admin__count">{rows.length} subjects</span>
+            </div>
+            <label className="subject-admin__field-label" htmlFor="subject-class">Class</label>
+            <select
+              id="subject-class"
+              value={classId}
+              disabled={busy}
+              onChange={(e) => {
+                setClassId(e.target.value);
+                setEditId("");
+                setAdds([]);
+                setSel(new Set());
+                setMsg("");
+              }}
+            >
+              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </section>
+
+          <section className="subject-admin__section">
+            <div className="subject-admin__section-heading">
+              <div>
+                <h2>Subjects in {className}</h2>
+                <p>Move subjects up or down, rename globally, or remove them from this class.</p>
+              </div>
+            </div>
+
+            {rows.length === 0 ? (
+              <div className="subject-admin__empty">No subjects have been assigned to this class.</div>
+            ) : (
+              <>
+                <div className="subject-admin__toolbar">
+                  <label className="subject-admin__select-all">
+                    <input
+                      type="checkbox"
+                      checked={allRowsTicked}
+                      disabled={busy}
+                      onChange={toggleAllRows}
+                    />
+                    Select all
+                  </label>
+                  <span className="subject-admin__selection">{sel.size} selected</span>
+                  <button
+                    type="button"
+                    className="subject-admin__button subject-admin__button--danger"
+                    disabled={busy || sel.size === 0}
+                    onClick={removeSelected}
+                  >
+                    Remove selected
+                  </button>
+                </div>
+
+                <div className="subject-admin__rows">
+                  {rows.map((s, i) => (
+                    <article className="subject-admin__subject" key={s.id}>
+                      <div className="subject-admin__subject-main">
+                        <input
+                          type="checkbox"
+                          checked={sel.has(s.id)}
+                          disabled={busy}
+                          onChange={() => toggleRow(s.id)}
+                          aria-label={`Select ${s.name}`}
+                        />
+                        <span className="subject-admin__position">{i + 1}</span>
+                        <div className="subject-admin__subject-content">
                           {editId === s.id ? (
-                            <>
-                              <input value={editName} onChange={(e) => setEditName(e.target.value)} />
-                              <div>
-                                <button style={small} disabled={busy || !editName.trim()} onClick={() => saveRename(s)}>Save</button>
-                                <button style={small} onClick={() => setEditId("")}>Cancel</button>
+                            <div className="subject-admin__rename">
+                              <label htmlFor={`rename-${s.id}`}>Rename subject globally</label>
+                              <input
+                                id={`rename-${s.id}`}
+                                value={editName}
+                                disabled={busy}
+                                maxLength={120}
+                                onChange={(e) => setEditName(e.target.value)}
+                              />
+                              <small>All classes using this subject will see the new name. You will review the affected classes before confirming.</small>
+                              <div className="subject-admin__rename-actions">
+                                <button
+                                  type="button"
+                                  className="subject-admin__button subject-admin__button--primary"
+                                  disabled={busy || !editName.trim() || editName.trim() === s.name}
+                                  onClick={() => saveRename(s)}
+                                >
+                                  {busy ? "Working..." : "Review & rename"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="subject-admin__button subject-admin__button--light"
+                                  disabled={busy}
+                                  onClick={() => setEditId("")}
+                                >
+                                  Cancel
+                                </button>
                               </div>
-                              <div style={{ fontSize: 12, color: "#687385" }}>Renames it in every class that uses it.</div>
+                            </div>
+                          ) : (
+                            <>
+                              <strong>{s.name}</strong>
+                              <span className="subject-admin__subject-caption">Subject {i + 1} of {rows.length}</span>
                             </>
-                          ) : s.name}
-                        </td>
-                        <td style={cell}>
-                          <button style={small} disabled={busy || i === 0} onClick={() => move(i, -1)}>Up</button>
-                          <button style={small} disabled={busy || i === rows.length - 1} onClick={() => move(i, 1)}>Down</button>
-                          <button style={small} disabled={busy} onClick={() => { setEditId(s.id); setEditName(s.name); }}>Rename</button>
-                          <button style={small} disabled={busy} onClick={() => remove(s)}>Remove</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+                          )}
+                        </div>
+                      </div>
+                      <div className="subject-admin__actions">
+                        <div className="subject-admin__move">
+                          <button
+                            type="button"
+                            className="subject-admin__icon-button"
+                            disabled={busy || i === 0}
+                            aria-label={`Move ${s.name} up`}
+                            title="Move up"
+                            onClick={() => move(i, -1)}
+                          >↑</button>
+                          <button
+                            type="button"
+                            className="subject-admin__icon-button"
+                            disabled={busy || i === rows.length - 1}
+                            aria-label={`Move ${s.name} down`}
+                            title="Move down"
+                            onClick={() => move(i, 1)}
+                          >↓</button>
+                        </div>
+                        <button
+                          type="button"
+                          className="subject-admin__button subject-admin__button--rename"
+                          disabled={busy}
+                          onClick={() => {
+                            setEditId(editId === s.id ? "" : s.id);
+                            setEditName(s.name);
+                          }}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          className="subject-admin__button subject-admin__button--remove"
+                          disabled={busy}
+                          onClick={() => remove(s)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
 
-          <h2>Add subjects to {className}</h2>
-          {available.length === 0 ? (
-            <p>Every existing subject is already in this class.</p>
-          ) : (
-            <>
-              <p style={{ fontSize: ".85rem", color: "#687385", margin: "0 0 6px" }}>
-                Tick as many as you want. They are added to the end of the list in the order you tick them.
-              </p>
-              <div style={{ maxHeight: 280, overflowY: "auto", border: "1px solid #dfe4ea", borderRadius: 8, padding: "6px 10px", marginBottom: 10 }}>
-                {available.map((s) => {
-                  const at = adds.indexOf(s.id);
-                  return (
-                    <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="checkbox" style={tick} checked={at >= 0} onChange={() => toggleAdd(s.id)} />
-                      <span style={{ flex: 1 }}>{s.name}</span>
-                      {at >= 0 && <span style={{ fontSize: 12, color: "#687385" }}>#{at + 1}</span>}
-                    </label>
-                  );
-                })}
+          <section className="subject-admin__section">
+            <div className="subject-admin__section-heading">
+              <div>
+                <h2>Add existing subjects</h2>
+                <p>Select subjects to add to {className}. They will be added in the order selected.</p>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button disabled={busy || adds.length === 0} onClick={addSelected}>
-                  {adds.length > 0 ? `Add ${adds.length} selected` : "Add selected"}
-                </button>
-                <button disabled={busy || adds.length === 0} onClick={() => setAdds([])}>Clear ticks</button>
+              {adds.length > 0 && <span className="subject-admin__count">{adds.length} chosen</span>}
+            </div>
+
+            {available.length === 0 ? (
+              <div className="subject-admin__empty">All existing subjects are already assigned to this class.</div>
+            ) : (
+              <>
+                <div className="subject-admin__available">
+                  {available.map((s) => {
+                    const at = adds.indexOf(s.id);
+                    return (
+                      <label className="subject-admin__available-item" key={s.id}>
+                        <input
+                          type="checkbox"
+                          disabled={busy}
+                          checked={at >= 0}
+                          onChange={() => toggleAdd(s.id)}
+                        />
+                        <span>{s.name}</span>
+                        {at >= 0 && <em>#{at + 1}</em>}
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="subject-admin__footer-actions">
+                  <button
+                    type="button"
+                    className="subject-admin__button subject-admin__button--primary"
+                    disabled={busy || adds.length === 0}
+                    onClick={addSelected}
+                  >
+                    Add {adds.length || ""} selected
+                  </button>
+                  <button
+                    type="button"
+                    className="subject-admin__button subject-admin__button--light"
+                    disabled={busy || adds.length === 0}
+                    onClick={() => setAdds([])}
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section className="subject-admin__section">
+            <div className="subject-admin__section-heading">
+              <div>
+                <h2>Create a new subject</h2>
+                <p>Create a subject and add it to the end of {className}&apos;s list.</p>
               </div>
-            </>
-          )}
-
-          <h3 style={{ marginTop: 16 }}>Or create a new subject</h3>
-          <div className="adm-row">
-            <input placeholder="New subject name (written in full)" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <button disabled={busy || !newName.trim()} onClick={addNew}>Create and add</button>
-          </div>
-
-          <p style={{ fontSize: ".85rem", color: "#687385", marginTop: 10 }}>
-            Removing a subject only takes it off this class&apos;s list. Saved scores and published results are never deleted.
-          </p>
+            </div>
+            <div className="subject-admin__create">
+              <div>
+                <label className="subject-admin__field-label" htmlFor="new-subject-name">Subject name</label>
+                <input
+                  id="new-subject-name"
+                  placeholder="e.g. Digital Technology"
+                  value={newName}
+                  disabled={busy}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+              </div>
+              <button
+                type="button"
+                className="subject-admin__button subject-admin__button--primary"
+                disabled={busy || !newName.trim()}
+                onClick={addNew}
+              >
+                Create & add
+              </button>
+            </div>
+            <p className="subject-admin__footnote">
+              Removing a subject from a class does not delete its saved scores or previously published results.
+              Global renaming preserves the subject ID and existing assignments.
+            </p>
+          </section>
         </>
       )}
     </div>

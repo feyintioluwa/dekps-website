@@ -379,6 +379,19 @@ export async function GET(request: Request) {
 
 
 
+    // JSS–SSS: respect this teacher's saved personal subject order.
+    // Class-wide primary order already comes from class_subjects.position.
+    const { data: classMeta } = await db.from("classes").select("name").eq("id", classId).single();
+    const isSecondary = /\b(jss|sss|junior secondary|senior secondary)\b/i.test(classMeta?.name ?? "");
+    if (isSecondary && subjects.length) {
+      const { data: preferred, error: orderError } = await db.from("teacher_subject_order")
+        .select("subject_id, position").eq("teacher_id", t.teacher.id).eq("class_id", classId);
+      if (orderError) return fail("Subject arrangement migration is required.");
+      const positions = new Map((preferred ?? []).map(x => [x.subject_id, x.position]));
+      const defaults = new Map(subjects.map((x, i) => [x.id, i]));
+      subjects.sort((a, b) => (positions.get(a.id) ?? 100000 + (defaults.get(a.id) ?? 0)) - (positions.get(b.id) ?? 100000 + (defaults.get(b.id) ?? 0)));
+    }
+
     const studentIds = (students.data ?? []).map((s) => s.id);
 
 

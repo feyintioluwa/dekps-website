@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ teacher: { name: teacher.name, email: teacher.email }, classes: [] });
   }
 
-  const [classes, subjects, classSubjects, students] = await Promise.all([
+  const [classes, subjects, classSubjects, students, allPositions, personalPositions] = await Promise.all([
     db.from("classes").select("id, name, sort_order").in("id", allowedClassIds).order("sort_order"),
     db.from("subjects").select("id, name").order("name"),
     // a class teacher sees every subject their class takes
@@ -21,14 +21,18 @@ export async function GET() {
       ? db.from("class_subjects").select("class_id, subject_id").in("class_id", classTeacherIds)
       : Promise.resolve({ data: [] as { class_id: string; subject_id: string }[], error: null }),
     db.from("students").select("class_id").in("class_id", allowedClassIds).eq("is_active", true),
+    db.from("class_subjects").select("class_id, subject_id, position").in("class_id", allowedClassIds),
+    db.from("teacher_subject_order").select("class_id, subject_id, position").eq("teacher_id", teacher.id).in("class_id", allowedClassIds),
   ]);
 
-  if (classes.error || subjects.error || classSubjects.error || students.error) {
+  if (classes.error || subjects.error || classSubjects.error || students.error || allPositions.error || personalPositions.error) {
     console.error("teacher/me failed");
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 
   const subjectName = new Map(((subjects.data ?? []) as Named[]).map((s) => [s.id, s.name]));
+  const sharedOrder = new Map((allPositions.data ?? []).map(x => [`${x.class_id}|${x.subject_id}`, x.position]));
+  const personalOrder = new Map((personalPositions.data ?? []).map(x => [`${x.class_id}|${x.subject_id}`, x.position]));
   const counts = new Map<string, number>();
   for (const s of (students.data ?? []) as { class_id: string }[]) {
     counts.set(s.class_id, (counts.get(s.class_id) ?? 0) + 1);
@@ -36,6 +40,7 @@ export async function GET() {
 
   const result = ((classes.data ?? []) as Named[]).map((c) => {
     const isClassTeacher = classTeacherIds.includes(c.id);
+    const secondary = /\b(jss|sss|junior secondary|senior secondary)\b/i.test(c.name);
 
     const ids = new Set<string>(
       isClassTeacher
@@ -53,7 +58,11 @@ export async function GET() {
       studentCount: counts.get(c.id) ?? 0,
       subjects: [...ids]
         .map((id) => ({ id, name: subjectName.get(id) ?? "Subject" }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .sort((a, b) => {
+          const pa = secondary ? personalOrder.get(`${c.id}|${a.id}`) : sharedOrder.get(`${c.id}|${a.id}`);
+          const pb = secondary ? personalOrder.get(`${c.id}|${b.id}`) : sharedOrder.get(`${c.id}|${b.id}`);
+          return (pa ?? 100000 + (sharedOrder.get(`${c.id}|${a.id}`) ?? 0)) - (pb ?? 100000 + (sharedOrder.get(`${c.id}|${b.id}`) ?? 0));
+        }),
     };
   });
 
