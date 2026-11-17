@@ -152,7 +152,7 @@ export default function Broadsheet() {
             }
           });
         });
-        ws.printOptions = { horizontalCentered: true };
+        ws.pageSetup.horizontalCentered = true;
         ws.pageSetup.printTitlesRow = "1:2";
         sheets++;
       }
