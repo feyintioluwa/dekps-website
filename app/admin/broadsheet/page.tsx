@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import "../students/admin.css";
 import { useAdminKey } from "../AdminShell";
 import { useConfirm } from "../Dialog";
@@ -56,47 +57,127 @@ export default function Broadsheet() {
     return mine.length === 0 || mine.some((x) => x.subject_id === subId);
   };
 
-  // ---------- Template: CA (out of 40) and Exam (out of 60) for every subject ----------
+  // ---------- Styled template: preserve the exact upload-compatible cell structure ----------
   async function template() {
     if (!termId) return setMsg("Choose the term first.");
-    setBusy(true); setMsg("Preparing template…");
-    const wb = XLSX.utils.book_new();
-    let sheets = 0;
-    for (const c of targets()) {
-      const d = await fetchClass(c.id);
-      if (!d) { setBusy(false); return; }
-      if (!d.students.length || !d.subjects.length) continue;
+    setBusy(true);
+    setMsg("Preparing styled template…");
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "De Kings Perfection Private School";
+      wb.subject = "Student CA and Exam score entry";
+      const navy = "071F3D";
+      const gold = "D4AD58";
+      const paleGold = "F4E8CB";
+      const light = "F2F6FB";
+      const border = "DCE5F0";
+      let sheets = 0;
 
-      // Row 1: Subject + each subject name (merged over 2 columns)
-      // Row 2: Name/Score + 40 and 60 under every subject
-      const top: (string | number)[] = ["Subject"];
-      const max: (string | number)[] = ["Name/Score"];
-      d.subjects.forEach((s) => { top.push(s.name, ""); max.push(40, 60); });
-      const aoa: (string | number)[][] = [top, max];
+      for (const c of targets()) {
+        const d = await fetchClass(c.id);
+        if (!d) return;
+        if (!d.students.length || !d.subjects.length) continue;
 
-      d.students.forEach((st) => {
-        const line: (string | number)[] = [st.name];
-        d.subjects.forEach((s) => {
-          if (!allowed(d, st, s.id)) { line.push("", ""); return; }
-          const g = (k: string) => d.scores.find((x) => x.student_id === st.id && x.subject_id === s.id && x.kind === k)?.score ?? "";
-          line.push(g("ca"), g("exam"));
+        // The uploader expects subject names in row 1, numeric limits in row 2,
+        // and unchanged student names in column A from row 3 onward.
+        const ws = wb.addWorksheet(c.name.slice(0, 31), {
+          views: [{ state: "frozen", xSplit: 1, ySplit: 2, topLeftCell: "B3" }],
+          pageSetup: { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+          properties: { defaultRowHeight: 30 },
         });
-        aoa.push(line);
-      });
+        ws.getColumn(1).width = 38;
+        ws.getCell(1, 1).value = "Subject";
+        ws.getCell(2, 1).value = "Name/Score";
+        ws.getRow(1).height = 38;
+        ws.getRow(2).height = 33;
 
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: aoa.length - 1, c: d.subjects.length * 2 } });
-      ws["!merges"] = d.subjects.map((_, j) => ({ s: { r: 0, c: 1 + j * 2 }, e: { r: 0, c: 2 + j * 2 } }));
-      ws["!cols"] = [{ wch: 30 }, ...d.subjects.flatMap(() => [{ wch: 7 }, { wch: 7 }])];
+        d.subjects.forEach((subject, i) => {
+          const caCol = 2 + i * 2;
+          const examCol = caCol + 1;
+          ws.getColumn(caCol).width = 14;
+          ws.getColumn(examCol).width = 14;
+          ws.mergeCells(1, caCol, 1, examCol);
+          ws.getCell(1, caCol).value = subject.name;
+          ws.getCell(2, caCol).value = 40;
+          ws.getCell(2, examCol).value = 60;
+          for (const col of [caCol, examCol]) {
+            const cell = ws.getCell(2, col);
+            cell.numFmt = '0" marks"'; // Numeric 40/60 remain numeric for upload.
+            cell.alignment = { horizontal: "center", vertical: "middle" };
+          }
+        });
 
-      XLSX.utils.book_append_sheet(wb, ws, c.name.slice(0, 31));
-      sheets++;
+        for (let col = 1; col <= 1 + d.subjects.length * 2; col++) {
+          const top = ws.getCell(1, col);
+          top.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${navy}` } };
+          top.font = { name: "Aptos", size: 12, bold: true, color: { argb: "FFFFFFFF" } };
+          top.alignment = { horizontal: col === 1 ? "left" : "center", vertical: "middle", wrapText: true, indent: col === 1 ? 1 : 0 };
+          top.border = { bottom: { style: "medium", color: { argb: `FF${gold}` } } };
+          const sub = ws.getCell(2, col);
+          sub.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${col === 1 ? gold : paleGold}` } };
+          sub.font = { name: "Aptos", size: 11, bold: true, color: { argb: `FF${navy}` } };
+          sub.alignment = { horizontal: col === 1 ? "left" : "center", vertical: "middle", indent: col === 1 ? 1 : 0 };
+          sub.border = { bottom: { style: "medium", color: { argb: `FF${gold}` } } };
+        }
+
+        d.students.forEach((student, i) => {
+          const rowNumber = i + 3;
+          const row = ws.getRow(rowNumber);
+          row.height = 32;
+          const nameCell = row.getCell(1);
+          nameCell.value = student.name;
+          nameCell.font = { name: "Aptos", size: 13, bold: true, color: { argb: `FF${navy}` } };
+          nameCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+          nameCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${i % 2 ? "FFFFFF" : light}` } };
+          nameCell.border = { bottom: { style: "hair", color: { argb: `FF${border}` } }, right: { style: "thin", color: { argb: `FF${gold}` } } };
+
+          d.subjects.forEach((subject, j) => {
+            const permitted = allowed(d, student, subject.id);
+            for (const [offset, kind, limit] of [[0, "ca", 40], [1, "exam", 60]] as const) {
+              const cell = row.getCell(2 + j * 2 + offset);
+              const existing = permitted ? d.scores.find((score) => score.student_id === student.id && score.subject_id === subject.id && score.kind === kind)?.score : undefined;
+              if (existing !== undefined) cell.value = existing;
+              cell.font = { name: "Aptos", size: 12, color: { argb: `FF${navy}` } };
+              cell.alignment = { horizontal: "center", vertical: "middle" };
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${!permitted ? "E9EDF2" : i % 2 ? "FFFFFF" : light}` } };
+              cell.border = { bottom: { style: "hair", color: { argb: `FF${border}` } }, right: { style: "hair", color: { argb: `FF${border}` } } };
+              if (permitted) {
+                cell.dataValidation = {
+                  type: "whole", operator: "between", allowBlank: true, showErrorMessage: true,
+                  errorStyle: "stop", errorTitle: "Invalid score",
+                  error: `Enter a whole-number score from 0 to ${limit}.`,
+                  formulae: [0, limit],
+                };
+              }
+            }
+          });
+        });
+        ws.printOptions = { horizontalCentered: true };
+        ws.pageSetup.printTitlesRow = "1:2";
+        sheets++;
+      }
+
+      if (!sheets) {
+        setMsg("No students or subjects found to put in the template.");
+        return;
+      }
+      const label = classId === "all" ? "All-Classes" : targets()[0]?.name ?? "Class";
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${label}-broadsheet.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMsg(`Template downloaded (${sheets} sheet${sheets > 1 ? "s" : ""}). Fill CA and Exam (blank = no score). Totals are worked out when you publish. Do not change student names, subject headings or tab names.`);
+    } catch (error) {
+      setMsg(`Could not prepare template: ${error instanceof Error ? error.message : "Please try again."}`);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
-    if (!sheets) return setMsg("No students or subjects found to put in the template.");
-    const label = classId === "all" ? "All-Classes" : targets()[0]?.name ?? "Class";
-    XLSX.writeFile(wb, `${label}-broadsheet.xlsx`);
-    setMsg(`Template downloaded (${sheets} sheet${sheets > 1 ? "s" : ""}). Fill CA and Exam (blank = no score). Totals are worked out when you publish. Do not change student names, subject headings or tab names.`);
   }
 
   // ---------- Upload: reads CA/Exam pairs under each subject heading ----------
