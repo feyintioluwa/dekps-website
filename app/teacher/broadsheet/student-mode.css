@@ -1,0 +1,49 @@
+/* DKPS Online Broadsheet — By Student. Mobile-first. */
+.bs .bs-entry-mode{margin:0 0 18px;padding:16px;background:#fff;border:1px solid #e1e7ef;border-radius:12px}
+.bs .bs-mode-label{display:block;margin:0 0 9px;color:#102e50;font-size:12px;font-weight:800}
+.bs .bs-mode-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:5px;background:#f1f4f8;border-radius:10px}
+.bs .bs-mode-options button{min-width:0;min-height:44px;padding:9px;border:0;border-radius:8px;background:transparent;color:#52647b;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.bs .bs-mode-options button.active{background:#0b3057;color:#fff}
+.bs .bs-student-mode,.bs .bs-student-panel{min-width:0;width:100%}
+.bs .bs-student-mode .bs-selector{margin-bottom:16px}
+.bs .bs-student-mode .bs-filters{grid-template-columns:minmax(0,1fr)}
+.bs .bs-student-panel{padding:14px;border:1px solid #e1e7ef;border-radius:12px;background:#fff;overflow:visible}
+.bs .bs-student-toolbar{display:grid;gap:14px;padding:0 0 16px;border-bottom:1px solid #e9edf3}
+.bs .bs-student-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.bs .bs-student-avatar{display:flex;align-items:center;justify-content:center;flex:0 0 42px;width:42px;height:42px;border-radius:11px;background:#0b3057;color:#fff;font-size:13px;font-weight:800}
+.bs .bs-student-identity-copy{min-width:0;flex:1}
+.bs .bs-student-count{display:block;margin-bottom:3px;color:#a47a29;font-size:10px;font-weight:800;letter-spacing:.06em}
+.bs .bs-student-identity h2{margin:0 0 3px!important;padding:0!important;border:0!important;background:transparent!important;color:#102e50!important;font-size:clamp(15px,3.6vw,20px)!important;font-weight:800!important;line-height:1.3!important;overflow-wrap:anywhere}
+.bs .bs-student-identity p{margin:0;color:#65778e;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.bs .bs-student-navigation{display:grid;gap:10px;min-width:0}
+.bs .bs-student-navigation label{display:grid;gap:6px;min-width:0;color:#33465f;font-size:11px;font-weight:750}
+.bs .bs-student-navigation select{display:block;width:100%;min-width:0;height:43px;padding:0 10px;border:1px solid #d5dfeb;border-radius:8px;background:#fff;color:#102e50;font:inherit;font-size:12px}
+.bs .bs-student-navigation-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.bs .bs-student-navigation-buttons button{min-width:0;height:43px;padding:8px;border:1px solid #d7dfeb;border-radius:8px;background:#fff;color:#0b3057;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.bs .bs-student-navigation-buttons button:last-child{background:#0b3057;border-color:#0b3057;color:#fff}
+.bs .bs-student-navigation-buttons button:disabled{opacity:.42;cursor:not-allowed}
+.bs .bs-student-section-title{display:flex;align-items:end;justify-content:space-between;gap:10px;padding:18px 0 12px}
+.bs .bs-student-section-title h3{margin:0 0 3px;color:#102e50;font-size:15px;font-weight:800}
+.bs .bs-student-section-title p,.bs .bs-student-section-title>span{margin:0;color:#697b91;font-size:11px}
+.bs .bs-student-section-title>span{white-space:nowrap;font-weight:750}
+.bs .bs-student-score-list{display:grid;gap:10px;min-width:0}
+.bs .bs-student-table-head{display:none}
+.bs .bs-student-score-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 62px;gap:10px;align-items:end;min-width:0;padding:13px;border:1px solid #e1e7ef;border-radius:10px;background:#fff}
+.bs .bs-student-subject-name{grid-column:1/-1;min-width:0;padding-bottom:9px;border-bottom:1px solid #edf0f4}
+.bs .bs-student-subject-name h4{margin:0 0 3px;color:#102e50;font-size:13px;font-weight:800;line-height:1.4;overflow-wrap:anywhere}
+.bs .bs-student-subject-name span{color:#6c7e93;font-size:11px}
+.bs .bs-student-score-field{display:grid;gap:6px;min-width:0;color:#52647b;font-size:11px;font-weight:750}
+.bs .bs-student-score-field input{display:block;width:100%;min-width:0;height:43px;padding:0 9px;border:1px solid #ced9e5;border-radius:8px;background:#fff;color:#102e50;font:inherit;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;outline:none}
+.bs .bs-student-score-field input:disabled{background:#f4f6f9;color:#718095;cursor:not-allowed}
+.bs .bs-student-score-field input:focus{border-color:#d4ad58;box-shadow:0 0 0 3px rgba(212,173,88,.15)}
+.bs .bs-student-score-total{display:grid;gap:7px;align-content:end;text-align:right;min-width:0}
+.bs .bs-student-score-total span{color:#718095;font-size:10px;font-weight:750;white-space:nowrap}
+.bs .bs-student-score-total strong{display:flex;align-items:center;justify-content:flex-end;height:43px;color:#102e50;font-size:19px;font-weight:850;font-variant-numeric:tabular-nums}
+.bs .bs-student-save{display:grid;gap:12px;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid #e9edf3}
+.bs .bs-student-save span{color:#5b6d82;font-size:12px;font-weight:650}
+.bs .bs-student-save .bs-save{width:100%;min-height:45px;padding:10px 16px;border-radius:8px;background:#0b3057;color:#fff;font:inherit;font-size:12px;font-weight:800}
+.bs .bs-student-save .bs-save:disabled{opacity:.5;cursor:not-allowed}
+.bs .bs-mode-options button:focus-visible,.bs .bs-student-navigation button:focus-visible,.bs .bs-student-navigation select:focus-visible,.bs .bs-student-score-field input:focus-visible{outline:3px solid #d4ad58;outline-offset:2px}
+@media(min-width:700px){.bs .bs-student-panel{padding:20px}.bs .bs-student-toolbar{grid-template-columns:minmax(0,1fr) minmax(300px,1fr);align-items:end;gap:20px}.bs .bs-student-navigation{grid-template-columns:minmax(0,1fr) auto;align-items:end}.bs .bs-student-navigation-buttons{grid-template-columns:repeat(2,44px)}.bs .bs-student-navigation-buttons button{font-size:17px}.bs .bs-student-navigation-buttons button span{display:none}.bs .bs-student-score-list{display:block;border:1px solid #e1e7ef;border-radius:10px;overflow:hidden}.bs .bs-student-table-head,.bs .bs-student-score-row{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(90px,1fr) minmax(90px,1fr) 95px;align-items:center;gap:16px;padding:11px 16px}.bs .bs-student-table-head{background:#f5f7fa;color:#62758c;font-size:11px;font-weight:800}.bs .bs-student-score-row{border:0;border-top:1px solid #e9edf3;border-radius:0}.bs .bs-student-subject-name{grid-column:auto;padding:0;border:0}.bs .bs-student-score-field>span,.bs .bs-student-score-total>span{display:none}.bs .bs-student-score-total{display:block}.bs .bs-student-score-total strong{height:auto}.bs .bs-student-save{display:flex;justify-content:space-between}.bs .bs-student-save .bs-save{width:auto;min-width:200px}}
+@media(min-width:1000px){.bs .bs-student-toolbar{grid-template-columns:minmax(0,1fr) minmax(360px,1fr)}}
+@media(max-width:360px){.bs .bs-student-panel{padding:10px}.bs .bs-student-score-row{padding:10px;gap:7px;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 50px}.bs .bs-student-score-total span{font-size:9px}.bs .bs-student-score-total strong{font-size:17px}}
